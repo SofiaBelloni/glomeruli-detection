@@ -1,0 +1,5 @@
+numpy
+matplotlib
+openslide-python
+opencv-python
+tensorflow
