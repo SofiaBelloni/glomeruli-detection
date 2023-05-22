@@ -1,5 +1,5 @@
 import glob
-import openslide
+#import openslide
 import cv2
 from matplotlib import pyplot as plt
 import numpy as np
@@ -7,6 +7,17 @@ import xml.etree.ElementTree as ET
 from utils import extrapolate_patches
 
 # import tensorflow as tf
+
+# The path can also be read from a config file, etc.
+OPENSLIDE_PATH = r'C:\Users\sofia\openslide-win64-20230414\openslide-win64-20230414\bin'
+
+import os
+if hasattr(os, 'add_dll_directory'):
+    # Python >= 3.8 on Windows
+    with os.add_dll_directory(OPENSLIDE_PATH):
+        import openslide
+else:
+    import openslide
 
 path_to_images = "../slides/"
 path_to_annotations = "../annotations/"
