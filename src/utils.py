@@ -75,10 +75,10 @@ def extrapolate_patches(wsi, annotation, output_width, output_height):
     dataset = []
     labels = []
 
-    # for row in range(num_rows):
-    #    for col in range(num_cols):
-    for row in range(3, 5):
-        for col in range(58, 60):
+    for row in range(num_rows):
+        for col in range(num_cols):
+    #for row in range(3, 5):
+    #    for col in range(58, 60):
             # Calcola le coordinate di inizio e fine per l'immagine corrente
             x = col * output_width
             y = row * output_height

@@ -1,5 +1,5 @@
 import glob
-#import openslide
+# import openslide
 import cv2
 from matplotlib import pyplot as plt
 import numpy as np
@@ -9,11 +9,11 @@ from utils import extrapolate_patches
 # import tensorflow as tf
 
 # The path can also be read from a config file, etc.
-OPENSLIDE_PATH = r'C:\Users\sofia\openslide-win64-20230414\openslide-win64-20230414\bin'
 
 import os
 if hasattr(os, 'add_dll_directory'):
     # Python >= 3.8 on Windows
+    OPENSLIDE_PATH = r'C:\Users\sofia\openslide-win64-20230414\openslide-win64-20230414\bin'
     with os.add_dll_directory(OPENSLIDE_PATH):
         import openslide
 else:
@@ -39,6 +39,7 @@ for svs_file in svs_files:
     d, l = extrapolate_patches(wsi, annotation, output_width, output_height)
     dataset.extend(d)
     labels.extend(l)
+    np.save(svs_file[len(path_to_images):-4] + '.npy', np.array(dataset))
 
 dataset = np.array(dataset)
 labels = np.array(labels)
