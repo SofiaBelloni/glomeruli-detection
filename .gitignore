@@ -58,3 +58,4 @@ dkms.conf
 *.xml
 
 src/__pycache__/
+src/dataset.npy
