@@ -12,5 +12,5 @@
 
 module load intel/python/3/2019.4.088
 module load nvidia/cudasdk/11.6
-source home/mla_group_02/visa/bin/activate
-python home/mla_group_02/visa/VISA/src/main.py
+source /home/mla_group_02/visa/bin/activate
+python /home/mla_group_02/visa/VISA/src/main.py

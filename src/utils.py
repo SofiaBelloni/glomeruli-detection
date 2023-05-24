@@ -77,9 +77,7 @@ def extrapolate_patches(wsi, annotation, el_width, el_height, output_width, outp
     dataset = []
     labels = []
 
-    print("ciao")
     thread_name = threading.current_thread().name
-    print("ciao" + thread_name)
     file = open("../log/thread_" + thread_name + ".txt", "a")
     file.write("Sto per leggere il file wsi\n")
 
@@ -91,10 +89,10 @@ def extrapolate_patches(wsi, annotation, el_width, el_height, output_width, outp
             # for row in range(3, 5):
             #    for col in range(58, 60):
             # Calcola le coordinate di inizio e fine per l'immagine corrente
-            x = col * output_width
-            y = row * output_height
-            x_end = x + output_width
-            y_end = y + output_height
+            x = col * el_width
+            y = row * el_height
+            x_end = x + el_width
+            y_end = y + el_height
 
             # Estrai l'immagine corrente
             region = wsi[y: y_end, x: x_end]
@@ -110,18 +108,18 @@ def extrapolate_patches(wsi, annotation, el_width, el_height, output_width, outp
                 dataset.append(r_image)
                 labels.append(r_label_image)
                 if not ((col == num_cols-1) or (row == num_rows-1)):
-                    x_h = x + output_width // 2
+                    x_h = x + el_width // 2
                     x_v = x
-                    x_d = x + output_width // 2
+                    x_d = x + el_width // 2
                     y_h = y
-                    y_v = y + output_height // 2
-                    y_d = y + output_height // 2
-                    region_h = wsi[y_h: y_h + output_height,
-                                   x_h: x_h+output_width]
-                    region_v = wsi[y_v: y_v + output_height,
-                                   x_v: x_v+output_width]
-                    region_d = wsi[y_d: y_d + output_height,
-                                   x_d: x_d+output_width]
+                    y_v = y + el_height // 2
+                    y_d = y + el_height // 2
+                    region_h = wsi[y_h: y_h + el_height,
+                                   x_h: x_h + el_width]
+                    region_v = wsi[y_v: y_v + el_height,
+                                   x_v: x_v + el_width]
+                    region_d = wsi[y_d: y_d + el_height,
+                                   x_d: x_d + el_width]
                     image_h = cv2.cvtColor(
                         np.array(region_h), cv2.COLOR_RGBA2BGR)
                     image_v = cv2.cvtColor(
@@ -135,7 +133,7 @@ def extrapolate_patches(wsi, annotation, el_width, el_height, output_width, outp
                         r_image = cv2.resize(
                             image_h, (output_width, output_height), interpolation=cv2.INTER_CUBIC)
                         r_label_image = cv2.resize(
-                            label_image[y_h: y_h+output_height, x_h: x_h+output_width], (output_width, output_height), interpolation=cv2.INTER_CUBIC)
+                            label_image[y_h: y_h+el_height, x_h: x_h+el_width], (output_width, output_height), interpolation=cv2.INTER_CUBIC)
 
                         dataset.append(r_image)
                         labels.append(r_label_image)
@@ -144,7 +142,7 @@ def extrapolate_patches(wsi, annotation, el_width, el_height, output_width, outp
                         r_image = cv2.resize(
                             image_v, (output_width, output_height), interpolation=cv2.INTER_CUBIC)
                         r_label_image = cv2.resize(
-                            label_image[y_v: y_v+output_height, x_v: x_v+output_width], (output_width, output_height), interpolation=cv2.INTER_CUBIC)
+                            label_image[y_v: y_v+el_height, x_v: x_v+el_width], (output_width, output_height), interpolation=cv2.INTER_CUBIC)
 
                         dataset.append(r_image)
                         labels.append(r_label_image)
@@ -153,12 +151,12 @@ def extrapolate_patches(wsi, annotation, el_width, el_height, output_width, outp
                         r_image = cv2.resize(
                             image_d, (output_width, output_height), interpolation=cv2.INTER_CUBIC)
                         r_label_image = cv2.resize(
-                            label_image[y_d: y_d+output_height, x_d: x_d+output_width], (output_width, output_height), interpolation=cv2.INTER_CUBIC)
+                            label_image[y_d: y_d+el_height, x_d: x_d+el_width], (output_width, output_height), interpolation=cv2.INTER_CUBIC)
 
                         dataset.append(r_image)
                         labels.append(r_label_image)
 
     file.write("Wsi elaborato\nDataset di dimensione:" +
-               str(np.array(dataset).shape) + "\Labels di dimensione:" + str(np.array(labels).shape))
+               str(np.array(dataset).shape) + "\nLabels di dimensione:" + str(np.array(labels).shape))
     file.close()
     return dataset, labels

@@ -59,3 +59,8 @@ dkms.conf
 
 src/__pycache__/
 src/dataset.npy
+log/
+
+*.npy
+
+src/prova.py
