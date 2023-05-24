@@ -7,8 +7,6 @@
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=9
-#SBATCH --mem=200000
-#SBATCH --mem-per-cpu=22222
 
 module load intel/python/3/2019.4.088
 module load nvidia/cudasdk/11.6
