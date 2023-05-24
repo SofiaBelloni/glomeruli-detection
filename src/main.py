@@ -49,7 +49,6 @@ def process_svs_file(svs_file):
         svs_file[len(path_to_images):-4] + ".xml"
     # Carica l'immagine svs
     wsi = openslide.OpenSlide(svs_file)
-    print("wth?")
     d, l = extrapolate_patches(
         wsi, annotation, el_width, el_height, output_width, output_height)
     np.save('../slides/' +
