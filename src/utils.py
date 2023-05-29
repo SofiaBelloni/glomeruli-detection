@@ -160,3 +160,14 @@ def extrapolate_patches(wsi, annotation, el_width, el_height, output_width, outp
                str(np.array(dataset).shape) + "\nLabels di dimensione:" + str(np.array(labels).shape))
     file.close()
     return dataset, labels
+
+
+def plt_history(history):
+    plt.style.use("Solarize_Light2")
+    fig, ax = plt.subplots(2, 1)
+    ax[0].plot([e for e in range(history.params['epochs'])],
+               history.history['accuracy'])
+    ax[0].set_title("Accuracy")
+    ax[1].plot([e for e in range(history.params['epochs'])],
+               history.history['loss'])
+    ax[1].set_title("Loss")
