@@ -16,8 +16,8 @@ path_to_images = "../slides/"
 path_to_annotations = "../annotations/"
 el_width = 2000
 el_height = 2000
-output_width = 1000
-output_height = 1000
+output_width = 512
+output_height = 512
 
 dataset = []
 labels = []
