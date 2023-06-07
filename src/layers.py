@@ -1,6 +1,8 @@
 from keras import backend as K
 from keras.layers import Layer
+from keras.layers.convolutional import Conv2D, BatchNormalization
 import tensorflow as tf
+from tensorflow.keras.layers import LeakyReLu
 
 
 class MaxPoolingWithArgmax2D(Layer):
@@ -86,3 +88,27 @@ class MaxUnpooling2D(Layer):
             mask_shape[2] * self.size[1],
             mask_shape[3],
         )
+
+
+class SkipConnection(tf.keras.Model):
+    # The Residual block of ResNet
+    def __init__(self, filt, strides=1):
+        super().__init__()
+        self.conv1 = tf.keras.layers.Conv2D(
+            filt,
+            padding='same',
+            kernel_size=(1,1),
+            strides=strides)
+        self.conv2 = tf.keras.layers.Conv2D(
+            filt * 2,
+            kernel_size=(3,3),
+            padding='same')
+        self.conv_1x1 = None
+        self.bn1 = tf.keras.layers.BatchNormalization()
+        self.bn2 = tf.keras.layers.BatchNormalization()
+
+    def call(self, X):
+        Y = LeakyReLu(self.bn1(self.conv1(X)))
+        Y = self.bn2(self.conv2(Y))
+        Y += X
+        return LeakyReLu(Y)

@@ -3,9 +3,11 @@
 #SBATCH --job-name=visa_test
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=s317626@studenti.polito.it
-#SBATCH --time=48:00:00
+#SBATCH --time=216:00:00
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
+#SBATCH --partition=cuda
+#SBATCH --partition=gpu:1
 #SBATCH --cpus-per-task=9
 
 module load intel/python/3/2019.4.088

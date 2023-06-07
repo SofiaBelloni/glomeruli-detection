@@ -31,7 +31,7 @@ def data_aug_impl(dataset, image_train, label_train):
     segmented_label_train = [SegmentationMapsOnImage(
         label, shape=dataset[1].shape) for label in label_train]
     image_train_copy = image_train.copy()
-    for _ in range(1):
+    for _ in range(4):
         augmented_images, augmented_labels = da(
             images=image_train_copy, segmentation_maps=segmented_label_train)
         image_train = np.append(image_train, augmented_images, axis=0)
@@ -41,12 +41,13 @@ def data_aug_impl(dataset, image_train, label_train):
     return image_train, label_train
 
 
-def generate_train_data_tensor(image_train, label_train):
-    train_data = tf.data.Dataset.from_tensor_slices((image_train, label_train))
-    train_data = train_data.map(
+def generate_data_tensor(image_train, label_train, train=True):
+    data = tf.data.Dataset.from_tensor_slices((image_train, label_train))
+    data = data.map(
         process_data, num_parallel_calls=tf.data.AUTOTUNE)
-    train_data = train_data.cache()
-    train_data = train_data.shuffle(100)
-    train_data = train_data.batch(128)
-    train_data = train_data.prefetch(tf.data.AUTOTUNE)
-    return train_data
+    data = data.cache()
+    if train:
+        data = data.shuffle(100)
+    data = data.batch(128)
+    data = data.prefetch(tf.data.AUTOTUNE)
+    return data
