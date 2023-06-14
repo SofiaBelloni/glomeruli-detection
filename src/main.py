@@ -1,10 +1,12 @@
 import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV
-from data_prepr_aug import data_aug_impl, generate_data_tensor
+from data_prepr_aug import generate_data_tensor
 from segnet import SegNet
 import tensorflow as tf
 from unet import Unet
 import json
+import concurrent.futures
+from thread import data_aug_thread
 
 # The path can also be read from a config file, etc.
 import os
@@ -16,14 +18,12 @@ if hasattr(os, 'add_dll_directory'):
 else:
     import openslide
 
-tf.compat.v1.disable_eager_execution()
+#tf.compat.v1.disable_eager_execution()
 
-path_to_dataset = "../slides/dataset.npy"
-path_to_labels = "../annotations/labels.npy"
-
+path_to_dataset = "../dataset512x512/dataset.npy"
+path_to_labels = "../dataset512x512/labels.npy"
 
 file = open("../log/training.txt", "x")
-
 
 file.write("Loading dataset and labels")
 
@@ -42,10 +42,29 @@ file.write("Dataset and labels splitted in train and test set\n" +
       f"image_train shape {image_train.shape} - label_train shape {label_train.shape}" +
       f"image_test shape {image_test.shape} - image_test shape {label_test.shape}")
 
-image_train, label_train = data_aug_impl(dataset, image_train, label_train)
+
+num_threads = 4  # Numero di thread da utilizzare
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_threads)
+futures = []
+
+for i in range(0,4):
+    future = executor.submit(data_aug_thread, image_train, label_train, image_train[0].shape)
+    futures.append(future)
+    
+concurrent.futures.wait(futures)
+
+for future in futures:
+    im, l = future.result()
+    image_train=np.append(image_train,im)
+    label_train=np.append(label_train,l)
+    
+    
+np.save('../slides/image_train_augmented.npy', image_train)
+np.save('../annotations/label_train_augmented.npy', label_train)
 
 file.write("Applied data agumentation to train set\n" +
       f"image_train augmented shape {image_train.shape} - label_train augmented shape {label_train.shape}")
+
 
 train_data = generate_data_tensor(image_train, label_train)
 validation_data = generate_data_tensor(image_validation, label_validation)
@@ -55,8 +74,14 @@ file.write("Preprocessed and created tensor dataset")
 
 
 
+
+steps_per_epoch = len(image_train) // 128 
+
+
+
+
 # Definisci la funzione per addestrare e valutare un modello con un dato tasso di apprendimento
-def train_and_evaluate_segnet(train_data, validation_data, learning_rate):
+def train_and_evaluate_segnet(train_data, validation_data, learning_rate, steps_per_epoch):
     # Costruisci il modello
     model = SegNet()
     # Compila il modello con la funzione di perdita e l'ottimizzatore appropriati
@@ -64,11 +89,14 @@ def train_and_evaluate_segnet(train_data, validation_data, learning_rate):
                                                                                                                "FalsePositives", "TrueNegatives", "TruePositives"])
     print("testing a model")
     # Addestra il modello sul training set
-    history = model.fit(train_data, epochs=1)
+    
+    
+
+    history = model.fit(train_data, epochs=50, steps_per_epoch=steps_per_epoch)
     # Valuta il modello sul validation set
     evals = model.evaluate(validation_data)
     return model, evals[1], history
-def train_and_evaluate_unet(train_data, validation_data, learning_rate):
+def train_and_evaluate_unet(train_data, validation_data, learning_rate, steps_per_epoch):
     # Costruisci il modello
     model = Unet()
     # Compila il modello con la funzione di perdita e l'ottimizzatore appropriati
@@ -76,7 +104,7 @@ def train_and_evaluate_unet(train_data, validation_data, learning_rate):
                                                                                                                "FalsePositives", "TrueNegatives", "TruePositives"])
     print("testing a model")
     # Addestra il modello sul training set
-    history = model.fit(train_data, epochs=50)
+    history = model.fit(train_data, epochs=50, steps_per_epoch=steps_per_epoch)
     # Valuta il modello sul validation set
     evals = model.evaluate(validation_data)
     return model, evals[1], history
@@ -93,7 +121,7 @@ file.write("Start training on segnet")
 # Valuta ogni tasso di apprendimento e seleziona il migliore
 for learning_rate in learning_rates:
     print("creating a model")
-    model, accuracy, history = train_and_evaluate_segnet(train_data, validation_data, learning_rate)
+    model, accuracy, history = train_and_evaluate_segnet(train_data, validation_data, learning_rate, steps_per_epoch)
     print(f"Learning Rate: {learning_rate}, Accuracy: {accuracy}")
     if accuracy > best_accuracy:
         best_accuracy = accuracy
@@ -115,7 +143,7 @@ best_history = None
 
 for learning_rate in learning_rates:
     print("creating a model")
-    model, accuracy, history = train_and_evaluate_unet(train_data, validation_data, learning_rate)
+    model, accuracy, history = train_and_evaluate_unet(train_data, validation_data, learning_rate, steps_per_epoch)
     print(f"Learning Rate: {learning_rate}, Accuracy: {accuracy}")
     if accuracy > best_accuracy:
         best_accuracy = accuracy

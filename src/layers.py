@@ -1,8 +1,7 @@
 from keras import backend as K
 from keras.layers import Layer
-from keras.layers.convolutional import Conv2D, BatchNormalization
+from keras.layers.convolutional import Conv2D
 import tensorflow as tf
-from tensorflow.keras.layers import LeakyReLu
 
 
 class MaxPoolingWithArgmax2D(Layer):
@@ -108,7 +107,8 @@ class SkipConnection(tf.keras.Model):
         self.bn2 = tf.keras.layers.BatchNormalization()
 
     def call(self, X):
-        Y = LeakyReLu(self.bn1(self.conv1(X)))
+        #Y = tf.keras.layers.LeakyReLu(self.bn1(self.conv1(X)))
         Y = self.bn2(self.conv2(Y))
         Y += X
-        return LeakyReLu(Y)
+        #return tf.keras.layers.LeakyReLu(Y)
+        return Y

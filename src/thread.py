@@ -2,6 +2,7 @@ import threading
 import openslide
 from utils import extrapolate_patches
 import numpy as np
+from data_prepr_aug import data_aug_impl
 
 
 def process_svs_file(svs_file, path_to_annotations, path_to_images, el_width, el_height, output_width, output_height):
@@ -23,3 +24,8 @@ def process_svs_file(svs_file, path_to_annotations, path_to_images, el_width, el
     np.save('../annotations/' +
             svs_file[len(path_to_images):-4] + '_label.npy', np.array(l))
     return d, l
+
+
+def data_aug_thread(image, label, shape_dataset):
+    image_train, label_train = data_aug_impl(shape_dataset, image, label)
+    return image_train, label_train
