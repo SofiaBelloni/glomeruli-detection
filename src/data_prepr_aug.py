@@ -22,10 +22,6 @@ def data_augment():
     ], random_order=True)
 
 
-def process_data(image, label):
-    return tf.cast(image, tf.float32)/255, tf.one_hot(label, 2, name="label", axis=-1)
-
-
 def data_aug_impl(shape_dataset, image_train, label_train):
     da = data_augment()
     segmented_label_train = [SegmentationMapsOnImage(
@@ -40,21 +36,26 @@ def data_aug_impl(shape_dataset, image_train, label_train):
     return image_train, label_train
 
 
+def process_data(image, label):
+    return tf.cast(image, tf.float32)/255, tf.one_hot(label, 2, name="label", axis=-1)
+
+
 def generate_data_tensor(image_train, label_train, train=True):
-    
+
     def generator():
         for img, lbl in zip(image_train, label_train):
             yield img, lbl
-    
-    data = tf.data.Dataset.from_generator(generator, 
+
+    data = tf.data.Dataset.from_generator(generator,
                                           output_signature=(
-                                              tf.TensorSpec(shape=(512, 512, 3), dtype=tf.float32),
+                                              tf.TensorSpec(
+                                                  shape=(512, 512, 3), dtype=tf.float32),
                                               tf.TensorSpec(shape=(512, 512), dtype=tf.int32)))
     data = data.map(
         process_data, num_parallel_calls=tf.data.AUTOTUNE)
-    data = data.cache()
     if train:
         data = data.shuffle(500)
-    data = data.batch(128)
+    data = data.cache()
+    data = data.batch(64)
     data = data.prefetch(tf.data.AUTOTUNE)
     return data
