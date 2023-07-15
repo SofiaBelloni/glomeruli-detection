@@ -1,7 +1,7 @@
 import concurrent.futures
 import glob
 import numpy as np
-from thread import process_svs_file
+from process_wsi.thread import process_svs_file
 # The path can also be read from a config file, etc.
 import os
 if hasattr(os, 'add_dll_directory'):

@@ -32,8 +32,18 @@ def data_aug_impl(shape_dataset, image_train, label_train):
     image_train = np.append(image_train, augmented_images, axis=0)
     label_train = np.append(label_train, np.array(
         [label.get_arr() for label in augmented_labels]), axis=0)
-
     return image_train, label_train
+
+def data_aug_new_data_impl(shape_dataset, image_train, label_train):
+    da = data_augment()
+    segmented_label_train = [SegmentationMapsOnImage(
+        label, shape=shape_dataset) for label in label_train]
+    image_train_copy = image_train.copy()
+    augmented_images, augmented_labels = da(
+        images=image_train_copy, segmentation_maps=segmented_label_train)
+    augmented_labels_array = np.array([label.get_arr() for label in augmented_labels])
+    return augmented_images, augmented_labels_array
+
 
 
 def process_data(image, label):

@@ -1,10 +1,9 @@
-import tensorflow as tf
-import numpy as np
-from sklearn.model_selection import train_test_split
 import cv2
-from keras.layers import Dense, Flatten, Reshape, Input, InputLayer, Conv2D, Conv2DTranspose, MaxPool2D
-from keras.models import Sequential, Model
-import math
+import numpy as np
+import tensorflow as tf
+import imgaug.augmenters as iaa
+from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+
 
 def glomeruli_crop(glomeruli, glomeruli_labels):
     result = []
@@ -69,74 +68,33 @@ def glomeruli_crop(glomeruli, glomeruli_labels):
 
     return np.array(result), np.array(result_labels), np.array(original_images), np.array(original_labels)
 
+
 def process_data(image):
     return tf.cast(image, tf.float32)/255, tf.cast(image, tf.float32)/255
 
-path_to_dataset = "../dataset512x512/dataset.npy"
-path_to_labels = "../dataset512x512/labels.npy"
 
-dataset = np.load(path_to_dataset)
-labels = np.load(path_to_labels)
-# Identification of images and labels with glomerulus
-glomeruli = np.array([dataset[i] for i in range(len(dataset)) if (1 in labels[i])])
-glomeruli_labels = np.array([labels[i] for i in range(len(dataset)) if (1 in labels[i])])
+def data_augment():
+    return iaa.Sequential([
+        iaa.Dropout((0, 0.05)),  # Remove random pixel
+        iaa.Affine(rotate=(-30, 30)),  # Rotate between -30 and 30 degreed
+        iaa.Fliplr(0.5),  # Flip with 0.5 probability
+        iaa.Crop(percent=(0, 0.2), keep_size=True),  # Random crop
+        # Add -50 to 50 to the brightness-related channels of each image
+        iaa.WithBrightnessChannels(iaa.Add((-50, 50))),
+        # Change images to grayscale and overlay them with the original image by varying strengths, effectively removing 0 to 50% of the color
+        iaa.Grayscale(alpha=(0.0, 0.5)),
+        # Add random value to each pixel
+        iaa.GammaContrast((0.5, 2.0), per_channel=True),
+        # Local distortions of images by moving points around
+        iaa.PiecewiseAffine(scale=(0.01, 0.1)),
+    ], random_order=True)
 
 
-
-result, result_label, ori, ori_l = glomeruli_crop(glomeruli, glomeruli_labels)
-
-result = result.astype('float32') / 255
-
-X_train, X_test = train_test_split(result, test_size=0.1, random_state=42)
-
-# encoder
-def build_autoencoder(img_shape, code_size):
-    encoder = Sequential()
-    encoder.add(InputLayer(img_shape))
-    encoder.add(Flatten())
-    encoder.add(Dense(code_size))
-
-    decoder = Sequential()
-    decoder.add(InputLayer((code_size,)))
-    decoder.add(Dense(np.prod(img_shape))) 
-    decoder.add(Reshape(img_shape))
-    
-def build_autoencoder_v3(img_shape, code_size):
-    encoder = Sequential()
-    encoder.add(InputLayer(img_shape))
-    encoder.add(Conv2D(code_size//4, 3, padding="same"))
-    encoder.add(MaxPool2D(2))
-    encoder.add(Conv2D(code_size//2, 3, padding="same"))
-    encoder.add(MaxPool2D(2))
-    encoder.add(Conv2D(code_size, 3, padding="same"))
-    encoder.add(MaxPool2D(2))
-
-    decoder = Sequential()
-    decoder.add(Conv2DTranspose(code_size, 5, padding="same", strides=2))
-    decoder.add(Conv2DTranspose(code_size//2, 3, padding="same", strides=2))
-    decoder.add(Conv2DTranspose(code_size//4, 2, padding="same", strides=2))
-    decoder.add(Conv2DTranspose(3, 3, padding="same"))
-    return encoder, decoder
-
-IMG_SHAPE = result.shape[1:]
-encoder, decoder = build_autoencoder_v3(IMG_SHAPE, 1024)
-
-inp = Input(IMG_SHAPE)
-code = encoder(inp)
-reconstruction = decoder(code)
-
-autoencoder = Model(inp,reconstruction)
-autoencoder.compile(optimizer='adamax', loss='mse')
-
-print(autoencoder.summary())
-
-history = autoencoder.fit(x=X_train, y=X_train, epochs=1000,
-                validation_data=[X_test, X_test])
-
-autoencoder.save('../saved_model/autoencoderv3')
-
-predicted=autoencoder.predict(X_test)
-
-decoded_imgs = (predicted * 255).astype(int)
-
-np.save("../images_autoencoder/decoded_imgsv3.npy", decoded_imgs)
+def data_aug_impl_no_label(image_train, n=1):
+    da = data_augment()
+    image_train_copy = image_train.copy()
+    for i in range(n):
+        augmented_images = da(
+            images=image_train_copy)
+        image_train = np.append(image_train, augmented_images, axis=0)
+    return image_train

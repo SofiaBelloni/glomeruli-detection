@@ -64,3 +64,19 @@ log/
 *.npy
 
 src/prova.py
+
+src/clustering/__pycache__/
+
+*.json
+
+*.joblib
+
+*.png
+
+saved_models/autoencoderv4_dense/
+
+*.h5
+
+autoencoder/
+
+saved_models/autoencoderv3/

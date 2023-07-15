@@ -2,7 +2,7 @@ import tensorflow as tf
 from keras.models import Model
 from keras.layers.convolutional import Conv2D
 from tensorflow.keras.layers import BatchNormalization, GlobalAveragePooling2D, Dense, LeakyReLU
-from layers import SkipConnection
+from layers.layers import SkipConnection
 
 NUM_CLASSES = 2
 INPUT_SHAPE = (512, 512, 3)
