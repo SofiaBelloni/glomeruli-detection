@@ -3,7 +3,7 @@ from keras.models import Model
 from keras.layers import BatchNormalization
 from keras.layers.convolutional import Conv2D
 from tensorflow.keras.layers import Activation
-from layers.layers import MaxPoolingWithArgmax2D, MaxUnpooling2D
+from layers import MaxPoolingWithArgmax2D, MaxUnpooling2D
 
 NUM_CLASSES = 2
 INPUT_SHAPE = (512, 512, 3)

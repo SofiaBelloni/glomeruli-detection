@@ -8,13 +8,14 @@ import cv2
 
 # Settings
 # Choose between "vgg19", "resnet50" and "autoencoder"
-feature_extractor = "autoencoder"
-load_saved_data = False  # Whether to load saved data or not
+feature_extractor = "vgg19"
+base_url = "vgg19_tuned" # "vgg19", "vgg19_tuned", "resnet50", "resnet50_tuned" or "autoencoder"
+load_saved_data = True  # Whether to load saved data or not
 pca_components = 100  # Number of PCA components
 finetune = True
 batch_size = 8
 shuffle_buffer_size = 256
-save_data = False
+save_data = True
 # legion
 path_to_dataset = "../../dataset512x512/dataset.npy"
 path_to_labels = "../../dataset512x512/labels.npy"
@@ -25,7 +26,7 @@ path_to_labels = "../../dataset512x512/labels.npy"
 # path_to_dataset = "/content/drive/MyDrive/MLA/dataset/RECHERCHE-015.npy"
 # path_to_labels = "/content/drive/MyDrive/MLA/dataset/RECHERCHE-015_label.npy"
 # legion
-path_to_saved_model = "../../saved_models/autoencoderv6_dense.h5"
+path_to_saved_model = "../../saved_model/autoencoderv6_dense.h5"
 # colab
 # path_to_saved_model = "/content/drive/MyDrive/MLA/saved_models/autoencoderv6_dense.h5"
 path_to_saved_data = "../../dataset512x512/glomeruli_data_no_dataaug.npy"
@@ -33,11 +34,11 @@ path_to_saved_labels = "../../dataset512x512/glomeruli_labels_no_dataaug.npy"
 
 
 def get_vgg19():
-    return tf.keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(200, 200, 3), pooling=None, classifier_activation="softmax")
+    return tf.keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(200, 200, 3), pooling="avg", classifier_activation="softmax")
 
 
 def get_resnet():
-    return tf.keras.applications.resnet50.ResNet50(include_top=False, weights='imagenet', input_shape=(200, 200, 3), pooling=None, classifier_activation="softmax")
+    return tf.keras.applications.resnet50.ResNet50(include_top=False, weights='imagenet', input_shape=(200, 200, 3), pooling="avg", classifier_activation="softmax")
 
 
 def get_autoencoder():
@@ -74,7 +75,6 @@ def fine_tuning(model):
 
     inputs = tf.keras.Input(shape=(200, 200, 3))
     x = model(inputs)
-    x = tf. keras.layers.GlobalAveragePooling2D()(x)
     x = tf.keras.layers.Dense(4096, activation="relu")(x)
     x = tf.keras.layers.Dense(4096, activation="relu")(x)
     outputs = tf.keras.layers.Dense(2, activation="softmax")(x)
@@ -95,10 +95,11 @@ def fine_tuning(model):
     # finetune the model
     model.fit(train_data, label_data, epochs=10, batch_size=batch_size)
 
-    layer_to_remove = model.layers[-4].name
+    layer_to_remove = model.layers[-3].name
     # Create a new model with the outputs of the original model
     feature_extractor = tf.keras.models.Model(
         inputs=model.input, outputs=model.get_layer(layer_to_remove).output)
+    print(feature_extractor.summary())
     return model, feature_extractor
 
 
@@ -122,17 +123,18 @@ def main():
         glomeruli_features = encoder.predict(glomeruli_data)
     # Extract features
     if save_data:
-        np.save("../../dataset512x512/glomeruli_features_{}.npy".format(feature_extractor),
+        np.save("../../dataset512x512/glomeruli_features_{}.npy".format(base_url),
                 glomeruli_features)
+    
     # Run clustering
     run_clustering(glomeruli_data, glomeruli_features,
-                   feature_extractor, feature_extractor)
+                   feature_extractor, base_url)
     # Run PCA
     glomeruli_features_pca = PCA(
         n_components=pca_components).fit_transform(glomeruli_features)
     # Run clustering with PCA
     run_clustering(glomeruli_data, glomeruli_features_pca,
-                   "{}_pca".format(feature_extractor), feature_extractor)
+                   "{}_pca".format(feature_extractor), base_url)
 
 
 if __name__ == "__main__":
