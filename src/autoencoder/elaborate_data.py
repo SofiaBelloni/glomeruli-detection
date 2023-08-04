@@ -68,6 +68,18 @@ def glomeruli_crop(glomeruli, glomeruli_labels):
 
     return np.array(result), np.array(result_labels), np.array(original_images), np.array(original_labels)
 
+def glomeruli_crop_dark_backgroung_super_cool(glomeruli, glomeruli_labels):
+    result = []
+    result_labels = []
+
+    for i in range(0, len(glomeruli)):
+      #temp_label = np.where(glomeruli_labels[i] == i, 1, 0)
+      # Apply the mask to the image
+      result_image = cv2.merge([channel * glomeruli_labels[i] for channel in cv2.split(glomeruli[i])])
+      result.append(result_image)
+      result_labels.append(glomeruli_labels[i])
+
+    return np.array(result), np.array(result_labels)
 
 def process_data(image):
     return tf.cast(image, tf.float32)/255, tf.cast(image, tf.float32)/255
@@ -98,3 +110,15 @@ def data_aug_impl_no_label(image_train, n=1):
             images=image_train_copy)
         image_train = np.append(image_train, augmented_images, axis=0)
     return image_train
+
+def data_aug_impl(shape_dataset, image_train, label_train):
+    da = data_augment()
+    segmented_label_train = [SegmentationMapsOnImage(
+        label, shape=shape_dataset) for label in label_train]
+    image_train_copy = image_train.copy()
+    augmented_images, augmented_labels = da(
+        images=image_train_copy, segmentation_maps=segmented_label_train)
+    image_train = np.append(image_train, augmented_images, axis=0)
+    label_train = np.append(label_train, np.array(
+        [label.get_arr() for label in augmented_labels]), axis=0)
+    return image_train, label_train

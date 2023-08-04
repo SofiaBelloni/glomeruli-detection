@@ -34,6 +34,7 @@ def data_aug_impl(shape_dataset, image_train, label_train):
         [label.get_arr() for label in augmented_labels]), axis=0)
     return image_train, label_train
 
+
 def data_aug_new_data_impl(shape_dataset, image_train, label_train):
     da = data_augment()
     segmented_label_train = [SegmentationMapsOnImage(
@@ -41,9 +42,9 @@ def data_aug_new_data_impl(shape_dataset, image_train, label_train):
     image_train_copy = image_train.copy()
     augmented_images, augmented_labels = da(
         images=image_train_copy, segmentation_maps=segmented_label_train)
-    augmented_labels_array = np.array([label.get_arr() for label in augmented_labels])
+    augmented_labels_array = np.array(
+        [label.get_arr() for label in augmented_labels])
     return augmented_images, augmented_labels_array
-
 
 
 def process_data(image, label):
@@ -56,11 +57,7 @@ def generate_data_tensor(image_train, label_train, train=True):
         for img, lbl in zip(image_train, label_train):
             yield img, lbl
 
-    data = tf.data.Dataset.from_generator(generator,
-                                          output_signature=(
-                                              tf.TensorSpec(
-                                                  shape=(512, 512, 3), dtype=tf.float32),
-                                              tf.TensorSpec(shape=(512, 512), dtype=tf.int32)))
+    data = tf.data.Dataset.from_generator(generator, output_signature = (tf.TensorSpec(shape = (512, 512, 3), dtype = tf.float32), tf.TensorSpec(shape = (512, 512), dtype = tf.int32)))
     data = data.map(
         process_data, num_parallel_calls=tf.data.AUTOTUNE)
     if train:

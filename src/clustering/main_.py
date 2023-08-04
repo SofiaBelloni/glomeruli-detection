@@ -73,12 +73,13 @@ def fine_tuning(model):
     train_data, label_data = generate_train_data(
         dataset, labels, batch_size, shuffle_buffer_size)
 
-    inputs = tf.keras.Input(shape=(200, 200, 3))
-    x = model(inputs)
+    #inputs = tf.keras.Input(shape=(200, 200, 3))
+    #x = model(inputs)
+    x = model(model.input)
     x = tf.keras.layers.Dense(4096, activation="relu")(x)
     x = tf.keras.layers.Dense(4096, activation="relu")(x)
     outputs = tf.keras.layers.Dense(2, activation="softmax")(x)
-    model = tf.keras.Model(inputs, outputs)
+    model = tf.keras.Model(model.input, outputs)
 
     # First, we only train the top layers (which were randomly initialized)
     for i, layer in enumerate(model.layers):
@@ -95,7 +96,7 @@ def fine_tuning(model):
     # finetune the model
     model.fit(train_data, label_data, epochs=10, batch_size=batch_size)
 
-    layer_to_remove = model.layers[-3].name
+    layer_to_remove = model.layers[-4].name
     # Create a new model with the outputs of the original model
     feature_extractor = tf.keras.models.Model(
         inputs=model.input, outputs=model.get_layer(layer_to_remove).output)
