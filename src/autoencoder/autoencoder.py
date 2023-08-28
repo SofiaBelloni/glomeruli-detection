@@ -7,7 +7,7 @@ from elaborate_data import data_aug_impl_no_label, glomeruli_crop_dark_backgroun
 from model import build_cnn_dense_autoencoder
 
 latent_space_dim = 512
-version = 2.1
+version = 2.0
 batch_size = 4
 epochs = 500
 
@@ -61,6 +61,11 @@ def generate_dark_data():
         X_test, X_test_l)
 
     X_train = X_train.astype('float32') / 255
+    X_train_label = X_train_label.astype('float32') / 255
+    X_validation = X_validation.astype('float32') / 255
+    X_validation_labels = X_validation_labels.astype('float32') / 255
+    X_test = X_test.astype('float32') / 255
+    X_test_labels = X_test_labels.astype('float32') / 255
     return X_train, X_validation, X_test, X_train_label, X_validation_labels, X_test_labels
 
 
@@ -140,10 +145,10 @@ def main():
     print(IMG_SHAPE)
 
     autoencoder = build_and_compile_model(IMG_SHAPE, latent_space_dim)
-    #autoencoder, history = train_model(
-    #    autoencoder, X_train, epochs=epochs, batch_size=batch_size, X_validation=X_validation, X_validation_label=X_validation_labels, X_train_label=X_train_label)
     autoencoder, history = train_model(
-        autoencoder, X_train_dark, epochs=epochs, batch_size=batch_size, X_validation=X_validation_dark)
+        autoencoder, X_train, epochs=epochs, batch_size=batch_size, X_validation=X_validation, X_validation_label=X_validation_dark, X_train_label=X_train_dark)
+    # autoencoder, history = train_model(
+    #     autoencoder, X_train_dark, epochs=epochs, batch_size=batch_size, X_validation=X_validation_dark)
 
     # autoencoder.save(f'../../saved_model/autoencoderv{version}_dense_{latent_space_dim}')
     save_decoded_images(autoencoder, X_test_dark)
