@@ -4,19 +4,20 @@ from unet import Unet
 import tensorflow as tf
 import json
 
-# image_train_path = '../../dataset512x512/image_train_augmented.npy'
-# label_train_path = '../../dataset512x512/label_train_augmented.npy'
-image_train_path = '../../dataset512x512/image_train.npy'
-label_train_path = '../../dataset512x512/label_train.npy'
-image_validation_path = '../../dataset512x512/image_validation.npy'
-label_validation_path = '../../dataset512x512/label_validation.npy'
-image_test_path = '../../dataset512x512/image_test.npy'
-label_test_path = '../../dataset512x512/label_test.npy'
-version = 1.1
-path_to_save_model = f'../../saved_model/unet_V{version}'
-path_to_save_model_weights = f'../../saved_model/unet_V{version}_weights.h5'
-path_to_save_history = f'../../histories/history_V{version}.json'
-path_to_save_test_result = f'../../dataset512x512/test_result_unet_V{version}.npy'
+# image_train_path = '../../dataset512x512/image_train_augmented_balanced.npy'
+# label_train_path = '../../dataset512x512/label_train_augmented_balanced.npy'
+image_train_path = '../../dataset512x512/image_train_balanced.npy'
+label_train_path = '../../dataset512x512/label_train_balanced.npy'
+image_validation_path = '../../dataset512x512/image_validation_balanced.npy'
+label_validation_path = '../../dataset512x512/label_validation_balanced.npy'
+image_test_path = '../../dataset512x512/image_test_balanced.npy'
+label_test_path = '../../dataset512x512/label_test_balanced.npy'
+version = 1.2
+info = "_sample_weights_balanced_dataset_"
+path_to_save_model = f'../../saved_model/unet_V{version}_{info}'
+path_to_save_model_weights = f'../../saved_model/unet_V{version}_{info}_weights.h5'
+path_to_save_history = f'../../histories/history_Unet_V{version}_{info}.json'
+path_to_save_test_result = f'../../dataset512x512/test_result_unet_V{version}_{info}.npy'
 epochs = 50
 # learning_rates = [0.001, 0.01, 0.1]
 learning_rate = 0.01
@@ -70,10 +71,7 @@ with strategy.scope():
             if class_weights is None:
                 yield d, l
             else:
-                sample_weights = np.zeros_like(labels, dtype=np.float32)
-                sample_weights[l == 1] = class_weights[1]  # "glomerulo"
-                # "non glomerulo"
-                sample_weights[l == 0] = class_weights[0]
+                sample_weights = np.zeros_like(l, dtype=np.float32)
                 yield (d, l, sample_weights)
 
     def validation_data_generator():
@@ -90,22 +88,40 @@ with strategy.scope():
     def process_data(image, label):
         return tf.cast(image, tf.float32)/255, tf.one_hot(label, 2, name="label", axis=-1)
 
+    def process_data_with_weight(image, label, weight):
+        class_weights = compute_class_weights()
+        c_w = tf.constant([class_weights[0], class_weights[1]])
+        c_w = c_w/tf.reduce_sum(c_w)
+        sample_weights = tf.gather(c_w, indices=tf.cast(label, tf.int32))
+
+        return tf.cast(image, tf.float32)/255, tf.one_hot(label, 2, name="label", axis=-1), sample_weights
+
     def load_generator():
+        output_shapes_train = (tf.TensorSpec(shape=(512, 512, 3), dtype=tf.float32),
+                               tf.TensorSpec(shape=(512, 512), dtype=tf.int64),
+                               tf.TensorSpec(shape=(512, 512), dtype=tf.int64))
+        output_shapes_validation = (tf.TensorSpec(shape=(512, 512, 3), dtype=tf.float32),
+                                    tf.TensorSpec(shape=(512, 512), dtype=tf.int64))
+        
         class_weights = None
         if use_weights:
             class_weights = compute_class_weights()
+            print(class_weights)
+        else:
+            output_shapes_train = output_shapes_validation
 
-        output_shapes = (tf.TensorSpec(shape=(512, 512, 3), dtype=tf.float32),
-                         tf.TensorSpec(shape=(512, 512), dtype=tf.int64))
-        train_gen = data_generator(class_weights)
         dataset = tf.data.Dataset.from_generator(
-            train_gen, output_signature=output_shapes)
+            lambda: data_generator(class_weights), output_signature=output_shapes_train)
         dataset = dataset.batch(batch_size, drop_remainder=True)
-        dataset = dataset.map(
-            process_data, num_parallel_calls=tf.data.AUTOTUNE)
+        if use_weights:
+            dataset = dataset.map(
+                process_data_with_weight, num_parallel_calls=tf.data.AUTOTUNE)
+        else:
+            dataset = dataset.map(
+                process_data, num_parallel_calls=tf.data.AUTOTUNE)
 
         validation_dataset = tf.data.Dataset.from_generator(
-            validation_data_generator, output_signature=output_shapes)
+            validation_data_generator, output_signature=output_shapes_validation)
         validation_dataset = validation_dataset.batch(
             batch_size, drop_remainder=True)
         validation_dataset = validation_dataset.map(
@@ -180,4 +196,5 @@ with strategy.scope():
         json.dump(history.history, fp)
 
     image_test = load_test_data()
-    test_model(model, image_test)
+    result = test_model(model, image_test)
+    np.save(path_to_save_test_result, result)

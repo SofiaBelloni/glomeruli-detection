@@ -1,9 +1,6 @@
-import tensorflow as tf
 import numpy as np
-import random
 import imgaug.augmenters as iaa
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
-import matplotlib.pyplot as plt
 
 
 def filter_images(images, labels):
@@ -47,3 +44,12 @@ def augment_images(images, labels, augmentation_factor=1):
         #    augmented_labels.append(label)
 
     return np.array(augmented_images), np.array(augmented_labels)
+
+
+def shuffle(images, labels):
+    shuffled_indices = np.arange(len(images))
+    np.random.shuffle(shuffled_indices)
+    images = images[shuffled_indices]
+    labels = labels[shuffled_indices]
+
+    return images, labels
