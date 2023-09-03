@@ -4,16 +4,16 @@ from segnet import SegNet
 import tensorflow as tf
 import json
 
-# image_train_path = '../../dataset512x512/image_train_augmented_balanced.npy'
-# label_train_path = '../../dataset512x512/label_train_augmented_balanced.npy'
-image_train_path = '../../dataset512x512/image_train_balanced.npy'
-label_train_path = '../../dataset512x512/label_train_balanced.npy'
+image_train_path = '../../dataset512x512/image_train_augmented_balanced.npy'
+label_train_path = '../../dataset512x512/label_train_augmented_balanced.npy'
+#image_train_path = '../../dataset512x512/image_train_balanced.npy'
+#label_train_path = '../../dataset512x512/label_train_balanced.npy'
 image_validation_path = '../../dataset512x512/image_validation_balanced.npy'
 label_validation_path = '../../dataset512x512/label_validation_balanced.npy'
 image_test_path = '../../dataset512x512/image_test_balanced.npy'
 label_test_path = '../../dataset512x512/label_test_balanced.npy'
 version = 1.2
-info = "_sample_weights_balanced_dataset_"
+info = "_balanced_dataset_"
 path_to_save_model = f'../../saved_model/segnet_V{version}_{info}'
 path_to_save_model_weights = f'../../saved_model/segnet_V{version}_{info}_weights.h5'
 path_to_save_history = f'../../histories/history_Segnet_V{version}_{info}.json'
@@ -23,8 +23,9 @@ epochs = 50
 learning_rate = 0.01
 batch_size = 8
 use_generator = True
-use_weights = True
+use_weights = False
 
+print(f"info: {info}, version: {version}")
 
 strategy = tf.distribute.MirroredStrategy()
 
@@ -43,16 +44,16 @@ with strategy.scope():
         # print(f"params: {model.count_params()}")
         print("testing a model")
         early_stopping = tf.keras.callbacks.EarlyStopping(
-            monitor='val_accuracy', patience=3, verbose=1, mode='max', restore_best_weights=True)
+            monitor='val_accuracy', patience=10, verbose=1, mode='max', restore_best_weights=True, start_from_epoch=15)
 
         # model.fit(image_train, label_train, epochs=epochs)
         # history = model.fit(image_train, label_train, validation_data=(image_validation, label_validation), epochs=epochs, callbacks=[early_stopping])
         if image_train is not None and label_train is not None:
             history = model.fit(image_train, label_train, validation_data=(
-                validation_image, validation_label), epochs=epochs, batch_size=batch_size)
+                validation_image, validation_label), epochs=epochs, batch_size=batch_size, callbacks=[early_stopping])
         elif dataset_train is not None and dataset_validation is not None:
             history = model.fit(
-                dataset_train, validation_data=dataset_validation, epochs=epochs)
+                dataset_train, validation_data=dataset_validation, epochs=epochs, callbacks=[early_stopping])
         # Valuta il modello sul validation set
         # evals = model.evaluate(validation_image, validation_label)
         best_accuracy = max(history.history['val_accuracy'])
