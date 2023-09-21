@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Input
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from model import build_autoencoder, build_cnn_dense_autoencoder
 
-latent_space_dim = 512
+latent_space_dim = 1024
 version = 2.2
 batch_size =8
 epochs = 500

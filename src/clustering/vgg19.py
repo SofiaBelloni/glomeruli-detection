@@ -8,12 +8,12 @@ base_url = "vgg19_tuned"
 pca_components = 100
 batch_size = 8
 save_data = False
-path_to_saved_vgg19 = "../../saved_model/autoencoder_v2.2_dense_512.h5"
-path_to_dataset = "../../dataset512x512/image_test_step_2d_cropped_darked.npy"
-path_to_original_dataset = "../../dataset512x512/image_test_step_2d_cropped.npy"
-#path_to_saved_vgg19 = "saved_models/vgg19_feature_extractor_.h5"
-#path_to_dataset = "dataset512x512/image_test_step_2d_cropped_darked.npy"
-#path_to_original_dataset = "dataset512x512/image_test_step_2d_cropped.npy"
+#path_to_saved_vgg19 = "../../saved_model/vgg19_feature_extractor_.h5"
+#path_to_dataset = "../../dataset512x512/image_test_step_2d_cropped_darked.npy"
+#path_to_original_dataset = "../../dataset512x512/image_test_step_2d_cropped.npy"
+path_to_saved_vgg19 = "saved_models/vgg19_feature_extractor_.h5"
+path_to_dataset = "dataset512x512/image_test_step_2d_cropped_darked.npy"
+path_to_original_dataset = "dataset512x512/image_test_step_2d_cropped.npy"
 
 
 def get_vgg19():
@@ -41,12 +41,12 @@ def main():
     # Run clustering
     run_clustering(dataset_original, features,
                    feature_extractor, base_url)
-    # # Run PCA
-    # features_pca = PCA(
-    #     n_components=pca_components).fit_transform(features)
-    # # Run clustering with PCA
-    # run_clustering(dataset_original, features_pca,
-    #                "{}_pca".format(feature_extractor), base_url)
+    # Run PCA
+    features_pca = PCA(
+        n_components=pca_components).fit_transform(features)
+    # Run clustering with PCA
+    run_clustering(dataset_original, features_pca,
+                   "{}_pca".format(feature_extractor), base_url)
 
 
 main()

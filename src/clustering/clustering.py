@@ -16,7 +16,8 @@ def run_clustering(dataset, features, title, base_url):
 
     # KMeans
     try:
-        best_params_k = define_best_params_kmeans(features)
+        best_params_k, best_score_k = define_best_params_kmeans(features)
+        save_best_score(best_score_k, f"{title}_kmeans", f"{b_usr}{base_url}_kmeans/")
         for score_type in values:
             best_params_kmeans = best_params_k[score_type]
             kmeans = KMeans(n_clusters=best_params_kmeans)
@@ -35,7 +36,8 @@ def run_clustering(dataset, features, title, base_url):
 
     # ISOMAP
     try:
-        best_params_i = define_best_params_isomap(features)
+        best_params_i, best_score_i = define_best_params_isomap(features)
+        save_best_score(best_score_i, f"{title}_isomap", f"{b_usr}{base_url}_isomap/")
         for score_type in values:
             best_params_isomap = best_params_i[score_type]
             isomap, isomap_kmeans = best_isomap_kmeans(best_params_isomap)
@@ -58,7 +60,8 @@ def run_clustering(dataset, features, title, base_url):
 
     # t-SNE
     try:
-        best_params_t = define_best_params_tsne(features)
+        best_params_t, best_score_t = define_best_params_tsne(features)
+        save_best_score(best_score_t, f"{title}_tsne", f"{b_usr}{base_url}_tsne/")
         for score_type in values:
             best_params_tsne = best_params_t[score_type]
             tsne, tsne_kmeans = best_tsne_kmeans(best_params_tsne)
@@ -87,3 +90,7 @@ def save_model(model, name, url):
 def save_best_params(best_params, name, url):
     with open(f'{url}best_params_{name}.json', 'w') as f:
         json.dump(best_params, f)
+        
+def save_best_score(best_score, name, url):
+    with open(f'{url}best_score_{name}.json', 'w') as f:
+        json.dump(best_score, f)

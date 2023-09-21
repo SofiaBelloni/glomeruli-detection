@@ -24,12 +24,24 @@ def define_best_params_kmeans(dataset):
             'davies_bouldin_score': davies_bouldin
         })
 
-    best_params_sse = min(results, key=lambda x: x['sse'])['params']
-    best_params_silhouette = max(
-        results, key=lambda x: x['silhouette_score'])['params']
-    best_params_calinski_harabasz = max(
-        results, key=lambda x: x['calinski_harabasz_score'])['params']
-    best_params_davies_bouldin = min(
-        results, key=lambda x: x['davies_bouldin_score'])['params']
+    best_sse_result = min(results, key=lambda x: x['sse'])
+    best_silhouette_result = max(results, key=lambda x: x['silhouette_score'])
+    best_calinski_harabasz_result = max(
+        results, key=lambda x: x['calinski_harabasz_score'])
+    best_davies_bouldin_result = min(
+        results, key=lambda x: x['davies_bouldin_score'])
 
-    return {"sse": best_params_sse, "silhouette": best_params_silhouette, "calinski_harabasz": best_params_calinski_harabasz, "davies_bouldin": best_params_davies_bouldin}
+    best_params = {
+        "sse": best_sse_result['params'],
+        "silhouette": best_silhouette_result['params'],
+        "calinski_harabasz": best_calinski_harabasz_result['params'],
+        "davies_bouldin": best_davies_bouldin_result['params']
+    }
+
+    best_scores = {
+        "sse": float(best_sse_result['sse']),
+        "silhouette": float(best_silhouette_result['silhouette_score']),
+        "calinski_harabasz": float(best_calinski_harabasz_result['calinski_harabasz_score']),
+        "davies_bouldin": float(best_davies_bouldin_result['davies_bouldin_score'])
+    }
+    return best_params, best_scores
