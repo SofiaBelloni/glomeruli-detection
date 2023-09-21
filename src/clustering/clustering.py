@@ -1,16 +1,14 @@
 from isomap import define_best_params_isomap, best_isomap_kmeans
 from tsne import define_best_params_tsne, best_tsne_kmeans
 from kmeans import define_best_params_kmeans
-from sklearn.cluster import SpectralClustering
-from spectral_clustering import define_best_params_spectral
 from sklearn.cluster import KMeans
-from plot import plot_scatter, plot_results, plot_images
-from joblib import dump, load
+from plot import plot_results, plot_images
+from joblib import dump
 import json
 
-# b_usr="../../cluster_result/"
-b_usr = "cluster_result/"
-values = ["silhouette"]
+b_usr="../../cluster_result/"
+#b_usr = "cluster_result/"
+values = ["silhouette", "calinski_harabasz", "davies_bouldin"]
 # values=["sse", "silhouette"]
 
 
@@ -43,7 +41,7 @@ def run_clustering(dataset, features, title, base_url):
             isomap, isomap_kmeans = best_isomap_kmeans(best_params_isomap)
             isomap_projection = isomap.fit_transform(features)
             isomap_labels = isomap_kmeans.fit_predict(isomap_projection)
-    
+
             # Update file names with score type
             plot_results(isomap, isomap_kmeans, best_params_isomap, "isomap", features,
                          f"{title}_isomap_{score_type}", f"{b_usr}{base_url}_isomap/")
@@ -57,7 +55,6 @@ def run_clustering(dataset, features, title, base_url):
                 best_params_isomap, f"{title}_isomap_{score_type}", f"{b_usr}{base_url}_isomap/")
     except Exception as e:
         print(f"Something went wrong in Isomap-KMeans: {e}")
-    
 
     # t-SNE
     try:
@@ -81,26 +78,6 @@ def run_clustering(dataset, features, title, base_url):
                 best_params_tsne, f"{title}_tsne_{score_type}", f"{b_usr}{base_url}_tsne/")
     except Exception as e:
         print(f"Something went wrong in TSNE-KMeans: {e}")
-
-        # SpectralClustering
-    try:
-        for score_type in ["silhouette"]:
-            best_params_spectral = define_best_params_spectral(features)[
-                score_type]
-            spectral = SpectralClustering(**best_params_spectral)
-            spectral_labels = spectral.fit_predict(features)
-
-            # Update file names with score type
-            plot_results(None, spectral, best_params_spectral, "spectral", features,
-                         f"{title}_spectral_{score_type}", f"{b_usr}{base_url}_spectral/")
-            plot_images(dataset, spectral_labels,
-                        f"{title}_spectral_{score_type}", f"{b_usr}{base_url}_spectral/")
-            save_model(spectral, f"{title}_spectral_{score_type}",
-                       f"{b_usr}{base_url}_spectral/")
-            save_best_params(
-                best_params_spectral, f"{title}_spectral_{score_type}", f"{b_usr}{base_url}_spectral/")
-    except Exception as e:
-        print(f"Something went wrong in Spectral Clustering: {e}")
 
 
 def save_model(model, name, url):

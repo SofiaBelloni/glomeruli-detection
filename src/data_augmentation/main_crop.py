@@ -1,9 +1,13 @@
-import cv2
 import numpy as np
-import tensorflow as tf
-import imgaug.augmenters as iaa
-from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+import cv2
 
+dataset_path = '../../dataset512x512/image_train_augmented_balanced.npy'
+label_path = '../../dataset512x512/label_train_augmented_balanced.npy'
+
+path_to_save_dataset = '../../dataset512x512/image_train_augmented_balanced_cropped.npy'
+path_to_save_label = '../../dataset512x512/label_train_augmented_balanced_cropped.npy'
+
+print("Test set")
 
 def glomeruli_crop(glomeruli, glomeruli_labels):
     result = []
@@ -71,56 +75,33 @@ def glomeruli_crop(glomeruli, glomeruli_labels):
 def glomeruli_crop_dark_backgroung_super_cool(glomeruli, glomeruli_labels):
     result = []
     result_labels = []
-    
+
     glomeruli_labels[glomeruli_labels != 0] = 1
 
     for i in range(0, len(glomeruli)):
-      #temp_label = np.where(glomeruli_labels[i] == i, 1, 0)
-      # Apply the mask to the image
-      result_image = cv2.merge([channel * glomeruli_labels[i] for channel in cv2.split(glomeruli[i])])
-      result.append(result_image)
-      result_labels.append(glomeruli_labels[i])
+        # temp_label = np.where(glomeruli_labels[i] == i, 1, 0)
+        # Apply the mask to the image
+        result_image = cv2.merge([channel * glomeruli_labels[i]
+                                 for channel in cv2.split(glomeruli[i])])
+        result.append(result_image)
+        result_labels.append(glomeruli_labels[i])
 
     return np.array(result), np.array(result_labels)
 
-def process_data(image):
-    return tf.cast(image, tf.float32)/255, tf.cast(image, tf.float32)/255
+ds = np.load(dataset_path)
+lb = np.load(label_path)
 
+#ds = (ds * 255).astype(np.uint8)
+#lb = np.argmax(np.eye(lb.shape[-1])[np.argmax(lb, axis=-1)], axis=-1).astype(np.uint8)
 
-def data_augment():
-    return iaa.Sequential([
-        iaa.Dropout((0, 0.05)),  # Remove random pixel
-        iaa.Affine(rotate=(-30, 30)),  # Rotate between -30 and 30 degreed
-        iaa.Fliplr(0.5),  # Flip with 0.5 probability
-        iaa.Crop(percent=(0, 0.2), keep_size=True),  # Random crop
-        # Add -50 to 50 to the brightness-related channels of each image
-        iaa.WithBrightnessChannels(iaa.Add((-50, 50))),
-        # Change images to grayscale and overlay them with the original image by varying strengths, effectively removing 0 to 50% of the color
-        iaa.Grayscale(alpha=(0.0, 0.5)),
-        # Add random value to each pixel
-        iaa.GammaContrast((0.5, 2.0), per_channel=True),
-        # Local distortions of images by moving points around
-        iaa.PiecewiseAffine(scale=(0.01, 0.1)),
-    ], random_order=True)
+print(f"Dataset shape {ds.shape} \nLabels shape {lb.shape}")
 
+ds_c, lb_c, _, _ = glomeruli_crop(ds, lb)
+print(f"Dataset shape cropped {ds_c.shape} \nLabels shape cropped {lb_c.shape}")
 
-def data_aug_impl_no_label(image_train, n=1):
-    da = data_augment()
-    image_train_copy = image_train.copy()
-    for i in range(n):
-        augmented_images = da(
-            images=image_train_copy)
-        image_train = np.append(image_train, augmented_images, axis=0)
-    return image_train
+#ds_d, lb_d = glomeruli_crop_dark_backgroung_super_cool(ds_c, lb_c)
+#print(f"Dataset shape cropped dark {ds_d.shape} \nLabels shape cropped dark {lb_d.shape}")
 
-def data_aug_impl(shape_dataset, image_train, label_train):
-    da = data_augment()
-    segmented_label_train = [SegmentationMapsOnImage(
-        label, shape=shape_dataset) for label in label_train]
-    image_train_copy = image_train.copy()
-    augmented_images, augmented_labels = da(
-        images=image_train_copy, segmentation_maps=segmented_label_train)
-    image_train = np.append(image_train, augmented_images, axis=0)
-    label_train = np.append(label_train, np.array(
-        [label.get_arr() for label in augmented_labels]), axis=0)
-    return image_train, label_train
+np.save(path_to_save_dataset, ds_c)
+np.save(path_to_save_label, lb_c)
+

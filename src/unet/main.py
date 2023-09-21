@@ -4,16 +4,16 @@ from unet import Unet
 import tensorflow as tf
 import json
 
-image_train_path = '../../dataset512x512/image_train_augmented_balanced.npy'
-label_train_path = '../../dataset512x512/label_train_augmented_balanced.npy'
-#image_train_path = '../../dataset512x512/image_train_balanced.npy'
-#label_train_path = '../../dataset512x512/label_train_balanced.npy'
+#image_train_path = '../../dataset512x512/image_train_augmented_balanced.npy'
+#label_train_path = '../../dataset512x512/label_train_augmented_balanced.npy'
+image_train_path = '../../dataset512x512/image_train_balanced.npy'
+label_train_path = '../../dataset512x512/label_train_balanced.npy'
 image_validation_path = '../../dataset512x512/image_validation_balanced.npy'
 label_validation_path = '../../dataset512x512/label_validation_balanced.npy'
 image_test_path = '../../dataset512x512/image_test_balanced.npy'
 label_test_path = '../../dataset512x512/label_test_balanced.npy'
 version = 2.0
-info = "_balanced_dataset_"
+info = "_balanced_dataset_no_class_weights_no_aug_"
 path_to_save_model = f'../../saved_model/unet_V{version}_{info}'
 path_to_save_model_weights = f'../../saved_model/unet_V{version}_{info}_weights.h5'
 path_to_save_history = f'../../histories/history_Unet_V{version}_{info}.json'
@@ -21,7 +21,7 @@ path_to_save_test_result = f'../../dataset512x512/test_result_unet_V{version}_{i
 epochs = 50
 # learning_rates = [0.001, 0.01, 0.1]
 learning_rate = 0.01
-batch_size = 8
+batch_size = 16
 use_generator = True
 use_weights = False
 
@@ -36,11 +36,11 @@ with strategy.scope():
         model = Unet()
         # Compila il modello con la funzione di perdita e l'ottimizzatore appropriati
         if use_weights:
-            model.compile(loss="categorical_crossentropy", optimizer=tf.keras.optimizers.Adam(learning_rate), metrics=["accuracy", "Precision", "Recall", "FalseNegatives",
-                                                                                                                       "FalsePositives", "TrueNegatives", "TruePositives"], sample_weight_mode='temporal')
+            model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy", "Precision", "Recall", "FalseNegatives",
+                                                                                      "FalsePositives", "TrueNegatives", "TruePositives"], sample_weight_mode='temporal')
         else:
-            model.compile(loss="categorical_crossentropy", optimizer=tf.keras.optimizers.Adam(learning_rate), metrics=["accuracy", "Precision", "Recall", "FalseNegatives",
-                                                                                                                       "FalsePositives", "TrueNegatives", "TruePositives"])
+            model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy", "Precision", "Recall", "FalseNegatives",
+                                                                                      "FalsePositives", "TrueNegatives", "TruePositives"])
         # print(f"params: {model.count_params()}")
         print("testing a model")
         early_stopping = tf.keras.callbacks.EarlyStopping(
@@ -98,13 +98,13 @@ with strategy.scope():
         return tf.cast(image, tf.float32)/255, tf.one_hot(label, 2, name="label", axis=-1), sample_weights
 
     def load_generator():
+        class_weights = None
+
         output_shapes_train = (tf.TensorSpec(shape=(512, 512, 3), dtype=tf.float32),
                                tf.TensorSpec(shape=(512, 512), dtype=tf.int64),
                                tf.TensorSpec(shape=(512, 512), dtype=tf.int64))
         output_shapes_validation = (tf.TensorSpec(shape=(512, 512, 3), dtype=tf.float32),
                                     tf.TensorSpec(shape=(512, 512), dtype=tf.int64))
-        
-        class_weights = None
         if use_weights:
             class_weights = compute_class_weights()
             print(class_weights)
@@ -123,6 +123,7 @@ with strategy.scope():
 
         validation_dataset = tf.data.Dataset.from_generator(
             validation_data_generator, output_signature=output_shapes_validation)
+
         validation_dataset = validation_dataset.batch(
             batch_size, drop_remainder=True)
         validation_dataset = validation_dataset.map(

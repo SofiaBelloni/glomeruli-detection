@@ -1,72 +1,65 @@
 import numpy as np
-from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from tensorflow.keras.layers import Input
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from elaborate_data import data_aug_impl_no_label, glomeruli_crop_dark_backgroung_super_cool, glomeruli_crop, data_aug_impl
-from model import build_cnn_dense_autoencoder
+from model import build_autoencoder, build_cnn_dense_autoencoder
 
 latent_space_dim = 512
-version = 2.0
-batch_size = 4
+version = 2.2
+batch_size =8
 epochs = 500
+IMG_SHAPE = (200, 200, 3)
+dataset_path = '../../dataset512x512/image_train_augmented_balanced_cropped_darked.npy'
+test_set_path = '../../dataset512x512/image_test_step_2d_cropped_darked.npy'
+
+path_to_save_model = f'../../saved_model/autoencoder_v{version}_dense_{latent_space_dim}.h5'
+path_to_save_decoded_image = f"../../images_autoencoder/decoded_imgs_v{version}_dense_{latent_space_dim}.npy"
 
 
-def load_data():
-    glomeruli_data = np.load(
-        "../../dataset512x512/glomeruli_data_no_dataaug.npy")
-    X_train, X_test = train_test_split(
-        glomeruli_data, test_size=0.1, random_state=42)
-    return X_train, X_test
+def data_generator():
+    data = np.load(dataset_path)
+    index_90_percent = int(len(data) * 0.90)
+    data = data[:index_90_percent]
+
+    print('Minimo train:', data.min())
+    print('Massimo train:', data.max())
+    print('Data shape:', data.shape)
+    for d in data:
+        yield d, d
 
 
-def generate_data():
-    glomeruli_data = np.load(
-        "../../dataset512x512/glomeruli_data_no_dataaug.npy")
-    X_train, X_vt = train_test_split(
-        glomeruli_data, test_size=0.5, random_state=42)
-    X_validation, X_test = train_test_split(
-        X_vt, test_size=0.5, random_state=42)
-    X_train = (X_train * 255).astype(np.uint8)
-    X_train = data_aug_impl_no_label(X_train, 3)
-    X_train = X_train.astype('float32') / 255
-    return X_train, X_test, X_validation
+def val_data_generator():
+    val_data = np.load(dataset_path)
+    index_90_percent = int(len(val_data) * 0.90)
+    val_data = val_data[index_90_percent:]
+
+    print('Minimo Val train:', val_data.min())
+    print('Massimo Val train:', val_data.max())
+    print('Val data shape:', val_data.shape)
+    for d in val_data:
+        yield d, d
 
 
-def generate_dark_data():
-    dataset = np.load(
-        "../../dataset512x512/dataset.npy")
-    labels = np.load(
-        "../../dataset512x512/labels.npy")
+def process_data(image, i):
+    return tf.cast(image, tf.float32)/255, tf.cast(i, tf.float32)/255
 
-    glomeruli_data, glomeruli_labels, _, _ = glomeruli_crop(dataset, labels)
 
-    X_train, X_vt = train_test_split(
-        glomeruli_data, test_size=0.5, random_state=42)
-    X_labels, X_vt_labels = train_test_split(
-        glomeruli_labels, test_size=0.5, random_state=42)
+def load_generator():
 
-    X_validation, X_test = train_test_split(
-        X_vt, test_size=0.5, random_state=42)
-    X_validation_l, X_test_l = train_test_split(
-        X_vt_labels, test_size=0.5, random_state=42)
-    # X_train = (X_train * 255).astype(np.uint8)
-    X_train, X_labels = data_aug_impl(X_train[0].shape, X_train, X_labels)
+    output_shapes_train = (tf.TensorSpec(shape=(200, 200, 3), dtype=tf.int32),
+                           tf.TensorSpec(shape=(200, 200, 3), dtype=tf.int32))
+    dataset = tf.data.Dataset.from_generator(
+        data_generator, output_signature=output_shapes_train)
+    dataset = dataset.batch(batch_size, drop_remainder=True)
+    dataset = dataset.map(
+        process_data, num_parallel_calls=tf.data.AUTOTUNE)
 
-    X_train_label, _ = glomeruli_crop_dark_backgroung_super_cool(
-        X_train, X_labels)
-    X_validation_labels, _ = glomeruli_crop_dark_backgroung_super_cool(
-        X_validation, X_validation_l)
-    X_test_labels, _ = glomeruli_crop_dark_backgroung_super_cool(
-        X_test, X_test_l)
-
-    X_train = X_train.astype('float32') / 255
-    X_train_label = X_train_label.astype('float32') / 255
-    X_validation = X_validation.astype('float32') / 255
-    X_validation_labels = X_validation_labels.astype('float32') / 255
-    X_test = X_test.astype('float32') / 255
-    X_test_labels = X_test_labels.astype('float32') / 255
-    return X_train, X_validation, X_test, X_train_label, X_validation_labels, X_test_labels
+    val_dataset = tf.data.Dataset.from_generator(
+        val_data_generator, output_signature=output_shapes_train)
+    val_dataset = val_dataset.batch(batch_size, drop_remainder=True)
+    val_dataset = val_dataset.map(
+        process_data, num_parallel_calls=tf.data.AUTOTUNE)
+    return dataset, val_dataset
 
 
 def build_and_compile_model(img_shape, code_size):
@@ -76,82 +69,45 @@ def build_and_compile_model(img_shape, code_size):
     code = encoder(inp)
     reconstruction = decoder(code)
 
+    metrics = ["accuracy", "Precision", "Recall", "FalseNegatives",
+               "FalsePositives", "TrueNegatives", "TruePositives"]
+
     autoencoder = tf.keras.Model(inputs=inp, outputs=reconstruction)
-    autoencoder.compile(optimizer='adamax', loss='mse')
+    autoencoder.compile(optimizer='adamax', loss='mse', metrics=metrics)
     return autoencoder
 
 
-def train_model(model, X_train, epochs, batch_size, X_validation=None, X_validation_label=None, X_train_label=None):
+def train_model(model, ds, val_ds):
+
     early_stopping = EarlyStopping(
         monitor='val_loss', start_from_epoch=75, patience=20, restore_best_weights=True)
     model_checkpoint = ModelCheckpoint(
-        f'../../saved_model/autoencoder_v{version}_dense_{latent_space_dim}.h5', save_best_only=True, monitor='val_loss', mode='min')
-    if X_validation is None:
-        if X_train_label is not None:
-            history = model.fit(
-                X_train, X_train_label,
-                epochs=epochs,
-                batch_size=batch_size,
-                validation_split=0.2,
-                callbacks=[early_stopping, model_checkpoint]
-            )
-            return model, history
-        else:
-            history = model.fit(
-                X_train, X_train,
-                epochs=epochs,
-                batch_size=batch_size,
-                validation_split=0.2,
-                callbacks=[early_stopping, model_checkpoint]
-            )
-            return model, history
-    else:
-        if X_train_label is not None:
-            history = model.fit(
-                X_train, X_train_label,
-                epochs=epochs,
-                batch_size=batch_size,
-                validation_data=(X_validation, X_validation_label),
-                callbacks=[early_stopping, model_checkpoint]
-            )
-            return model, history
-        else:
-            history = model.fit(
-                X_train, X_train,
-                epochs=epochs,
-                batch_size=batch_size,
-                validation_data=(X_validation, X_validation),
-                callbacks=[early_stopping, model_checkpoint]
-            )
-            return model, history
+        path_to_save_model, save_best_only=True, monitor='val_loss', mode='min')
+    history = model.fit(
+        ds,
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_data=val_ds,
+        # callbacks=[DisplayCallback()]
+        callbacks=[early_stopping, model_checkpoint]
+    )
+    return model, history
 
 
-def save_decoded_images(model, X_test):
-    predicted = model.predict(X_test)
+def save_decoded_images(model):
+    ds_test = np.load(test_set_path)
+    predicted = model.predict(ds_test)
     decoded_imgs = (predicted * 255).astype(int)
-    np.save(
-        f"../../images_autoencoder/decoded_imgs_v{version}_dense_{latent_space_dim}.npy", decoded_imgs)
-    np.save(
-        f"../../images_autoencoder/original_imgs_v{version}_dense_{latent_space_dim}.npy", X_test)
+    np.save(path_to_save_decoded_image, decoded_imgs)
 
 
 def main():
-    # X_train, X_test = load_data()
-    # X_train, X_test, X_validation = generate_data()
-
-    X_train, X_validation, X_test, X_train_dark, X_validation_dark, X_test_dark = generate_dark_data()
-
-    IMG_SHAPE = X_train.shape[1:]
-    print(IMG_SHAPE)
+    ds, val_ds = load_generator()
 
     autoencoder = build_and_compile_model(IMG_SHAPE, latent_space_dim)
-    autoencoder, history = train_model(
-        autoencoder, X_train, epochs=epochs, batch_size=batch_size, X_validation=X_validation, X_validation_label=X_validation_dark, X_train_label=X_train_dark)
-    # autoencoder, history = train_model(
-    #     autoencoder, X_train_dark, epochs=epochs, batch_size=batch_size, X_validation=X_validation_dark)
+    autoencoder, history = train_model(autoencoder, ds, val_ds)
 
-    # autoencoder.save(f'../../saved_model/autoencoderv{version}_dense_{latent_space_dim}')
-    save_decoded_images(autoencoder, X_test_dark)
+    save_decoded_images(autoencoder)
 
 
 if __name__ == "__main__":

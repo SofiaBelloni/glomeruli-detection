@@ -3,13 +3,13 @@
 #SBATCH --job-name=autoencoder
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=s317626@studenti.polito.it
-#SBATCH --time=116:00:00
+#SBATCH --time=24:00:00
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --partition=cuda
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=100G
+#SBATCH --mem=50G
 
 module load intel/python/3/2019.4.088
 module load nvidia/cudasdk/11.6
