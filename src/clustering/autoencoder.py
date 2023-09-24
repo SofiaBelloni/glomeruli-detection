@@ -6,9 +6,9 @@ from clustering import run_clustering
 feature_extractor = "autoencoder"
 base_url = "autoencoder"
 pca_components = 100
-path_to_saved_model = "../../saved_model/autoencoder_v2.2_dense_512.h5"
-path_to_dataset = "../../dataset512x512/image_test_step_2d_cropped_darked.npy"
-path_to_original_dataset = "../../dataset512x512/image_test_step_2d_cropped.npy"
+path_to_saved_model = "../../saved_model/autoencoder_v2.3_newdata_dense_512.h5"
+path_to_dataset = "../../dataset512x512/image_test_autoencoder.npy"
+path_to_original_dataset = "../../dataset512x512/image_test_autoencoder.npy"
 #path_to_saved_model = "saved_models/autoencoder_v2.2_dense_512.h5"
 #path_to_dataset = "dataset512x512/image_test_step_2d_cropped_darked.npy"
 #path_to_original_dataset = "dataset512x512/image_test_step_2d_cropped.npy"
@@ -23,8 +23,8 @@ def get_autoencoder():
 
 def load_data():
     ds = np.load(path_to_dataset)
-    ds_o = np.load(path_to_original_dataset)
-    return ds, ds_o
+    #ds_o = np.load(path_to_original_dataset)
+    return ds, ds
 
 
 def main():

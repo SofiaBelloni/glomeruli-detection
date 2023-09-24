@@ -4,16 +4,16 @@ from segnet import SegNet
 import tensorflow as tf
 import json
 
-image_train_path = '../../dataset512x512/image_train_augmented_balanced.npy'
-label_train_path = '../../dataset512x512/label_train_augmented_balanced.npy'
-#image_train_path = '../../dataset512x512/image_train_balanced.npy'
-#label_train_path = '../../dataset512x512/label_train_balanced.npy'
-image_validation_path = '../../dataset512x512/image_validation_balanced.npy'
-label_validation_path = '../../dataset512x512/label_validation_balanced.npy'
-image_test_path = '../../dataset512x512/image_test_balanced.npy'
-label_test_path = '../../dataset512x512/label_test_balanced.npy'
-version = 1.2
-info = "_balanced_dataset_"
+image_train_path = '../../dataset512x512/image_train_ss.npy'
+label_train_path = '../../dataset512x512/label_train_ss.npy'
+# image_train_path = '../../dataset512x512/image_train_balanced.npy'
+# label_train_path = '../../dataset512x512/label_train_balanced.npy'
+# image_validation_path = '../../dataset512x512/image_validation_balanced.npy'
+# label_validation_path = '../../dataset512x512/label_validation_balanced.npy'
+image_test_path = '../../dataset512x512/image_test_ss.npy'
+label_test_path = '../../dataset512x512/label_test_ss.npy'
+version = 1.3
+info = "_new_data_"
 path_to_save_model = f'../../saved_model/segnet_V{version}_{info}'
 path_to_save_model_weights = f'../../saved_model/segnet_V{version}_{info}_weights.h5'
 path_to_save_history = f'../../histories/history_Segnet_V{version}_{info}.json'
@@ -63,6 +63,9 @@ with strategy.scope():
     def data_generator(class_weights=None):
         data = np.load(image_train_path)
         labels = np.load(label_train_path)
+        index_90_percent = int(len(data) * 0.90)
+        data = data[:index_90_percent]
+        labels = labels[:index_90_percent]
 
         print('Minimo train:', data.min())
         print('Massimo train:', data.max())
@@ -76,8 +79,11 @@ with strategy.scope():
                 yield (d, l, sample_weights)
 
     def validation_data_generator():
-        validation_data = np.load(image_validation_path)
-        validation_labels = np.load(label_validation_path)
+        validation_data = np.load(image_train_path)
+        validation_labels = np.load(label_train_path)
+        index_90_percent = int(len(validation_data) * 0.90)
+        validation_data = validation_data[index_90_percent:]
+        validation_labels = validation_labels[index_90_percent:]
 
         print('Minimo validation:', validation_data.min())
         print('Massimo validation:', validation_data.max())
@@ -103,7 +109,7 @@ with strategy.scope():
                                tf.TensorSpec(shape=(512, 512), dtype=tf.int64))
         output_shapes_validation = (tf.TensorSpec(shape=(512, 512, 3), dtype=tf.float32),
                                     tf.TensorSpec(shape=(512, 512), dtype=tf.int64))
-        
+
         class_weights = None
         if use_weights:
             class_weights = compute_class_weights()
@@ -133,8 +139,8 @@ with strategy.scope():
     def load_data():
         image_train = np.load(image_train_path)
         label_train = np.load(label_train_path)
-        image_validation = np.load(image_validation_path)
-        label_validation = np.load(label_validation_path)
+        image_validation = np.load(image_train_path)
+        label_validation = np.load(label_train_path)
         return image_train, label_train, image_validation, label_validation
 
     def test_model(model, image_test):
@@ -178,7 +184,7 @@ with strategy.scope():
     if (use_generator):
         dataset, validation_dataset = load_generator()
         model, accuracy, history = train_and_evaluate_segnet(dataset_train=dataset, dataset_validation=validation_dataset,
-                                                           learning_rate=learning_rate)
+                                                             learning_rate=learning_rate)
     else:
         image_train, label_train, image_validation, label_validation = load_data()
         model, accuracy, history = train_and_evaluate_segnet(

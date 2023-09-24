@@ -2,15 +2,15 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Input
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from model import build_autoencoder, build_cnn_dense_autoencoder
+from model import build_cnn_dense_autoencoder
 
-latent_space_dim = 1024
-version = 2.2
+latent_space_dim = 512
+version = "2.3_newdata"
 batch_size =8
 epochs = 500
 IMG_SHAPE = (200, 200, 3)
-dataset_path = '../../dataset512x512/image_train_augmented_balanced_cropped_darked.npy'
-test_set_path = '../../dataset512x512/image_test_step_2d_cropped_darked.npy'
+dataset_path = '../../dataset512x512/image_train_autoencoder.npy'
+test_set_path = '../../dataset512x512/image_test_autoencoder.npy'
 
 path_to_save_model = f'../../saved_model/autoencoder_v{version}_dense_{latent_space_dim}.h5'
 path_to_save_decoded_image = f"../../images_autoencoder/decoded_imgs_v{version}_dense_{latent_space_dim}.npy"
