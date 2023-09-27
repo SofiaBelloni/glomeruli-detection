@@ -5,8 +5,8 @@ import numpy as np
 
 def data_augment():
     return iaa.Sequential([
-        #iaa.Dropout((0, 0.05)),  # Remove random pixel
-        #iaa.Affine(rotate=(-30, 30)),  # Rotate between -30 and 30 degreed
+        # iaa.Dropout((0, 0.05)),  # Remove random pixel
+        # iaa.Affine(rotate=(-30, 30)),  # Rotate between -30 and 30 degreed
         iaa.Fliplr(0.5),  # Flip with 0.5 probability
         iaa.Crop(percent=(0, 0.2), keep_size=True),  # Random crop
         # Add -50 to 50 to the brightness-related channels of each image
@@ -27,7 +27,7 @@ def data_aug_impl(image_train, label_train):
     image_train_copy = image_train.copy()
     augmented_images, augmented_labels = da(
         images=image_train_copy, segmentation_maps=segmented_label_train)
-    augmented_labels =np.array(
+    augmented_labels = np.array(
         [label.get_arr() for label in augmented_labels])
     return augmented_images, augmented_labels
 

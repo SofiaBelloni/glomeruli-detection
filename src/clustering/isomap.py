@@ -4,13 +4,14 @@ from sklearn.model_selection import ParameterGrid
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 
+# Define a parameter grid for Isomap and KMeans
 param_grid = {
     'isomap__n_components': [2, 3, 5, 10, 30],
-    # 'isomap__n_components': [2, 3, 5],
     'isomap__n_neighbors': [5, 10, 20, 50, 100],
-    # 'isomap__n_neighbors': [5, 10, 20, 50],
     'kmeans__n_clusters': [5, 7, 10]
 }
+
+# Set up a pipeline with Isomap for dimensionality reduction and KMeans for clustering
 pipe = Pipeline(steps=[
     ('isomap', Isomap()),
     ('kmeans', KMeans())
@@ -18,18 +19,25 @@ pipe = Pipeline(steps=[
 
 
 def define_best_params_isomap(dataset):
+    """
+    Determine the best parameters for Isomap and KMeans by evaluating different combinations
+    and calculating several cluster validity indices.
+    """
     results = []
 
+    # Iterate over the parameter grid and set the parameters for the pipeline
     for params in ParameterGrid(param_grid):
         pipe.set_params(**params)
         pipe.fit(dataset)
 
+        # Compute the Sum of Squared Errors (SSE) and clustering metrics
         sse = pipe['kmeans'].inertia_
         silhouette_avg = silhouette_score(dataset, pipe['kmeans'].labels_)
         calinski_harabasz = calinski_harabasz_score(
             dataset, pipe['kmeans'].labels_)
         davies_bouldin = davies_bouldin_score(dataset, pipe['kmeans'].labels_)
 
+        # Append the results including parameters and scores
         results.append({
             'params': params,
             'sse': sse,
@@ -37,6 +45,8 @@ def define_best_params_isomap(dataset):
             'calinski_harabasz_score': calinski_harabasz,
             'davies_bouldin_score': davies_bouldin
         })
+
+    # Find the best parameters based on different scores
     best_sse_result = min(results, key=lambda x: x['sse'])
     best_silhouette_result = max(results, key=lambda x: x['silhouette_score'])
     best_calinski_harabasz_result = max(
@@ -44,6 +54,7 @@ def define_best_params_isomap(dataset):
     best_davies_bouldin_result = min(
         results, key=lambda x: x['davies_bouldin_score'])
 
+    # Store the best parameters and scores
     best_params = {
         "sse": best_sse_result['params'],
         "silhouette": best_silhouette_result['params'],
@@ -61,6 +72,9 @@ def define_best_params_isomap(dataset):
 
 
 def best_isomap_kmeans(best_params):
+    """
+    Extract the best parameters for Isomap and KMeans and create instances with these parameters.
+    """
     isomap_params = {k.replace('isomap__', ''): v for k,
                      v in best_params.items() if k.startswith('isomap__')}
     isomap = Isomap(**isomap_params)

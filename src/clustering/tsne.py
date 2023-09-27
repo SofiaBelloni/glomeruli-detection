@@ -3,14 +3,12 @@ from sklearn.cluster import KMeans
 from sklearn.model_selection import ParameterGrid
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 
+# Define parameter grids for t-SNE and KMeans
 tsne_params = {
     'n_components': [2, 3],
     'perplexity': [30, 50, 80, 100],
-    # 'perplexity': [30, 50],
     'early_exaggeration': [12, 24, 36],
-    # 'learning_rate': [10, 50, 100, 200, 500],
     'learning_rate': [100, 200],
-    # 'n_iter': [1000, 2000, 3000, 5000]
     'n_iter': [1000]
 }
 
@@ -20,21 +18,30 @@ kmeans_params = {
 
 
 def define_best_params_tsne(dataset):
+    """
+    Function to perform grid search over t-SNE and KMeans hyperparameters, 
+    and evaluate clustering performance using various metrics.
+    """
     tsne_results = []
 
+    # Iterate over all combinations of t-SNE parameters
     for tsne_param in ParameterGrid(tsne_params):
         tsne = TSNE(**tsne_param)
         X_transformed = tsne.fit_transform(dataset)
+
+        # Iterate over all combinations of KMeans parameters
         for kmeans_param in ParameterGrid(kmeans_params):
             kmeans = KMeans(**kmeans_param)
             kmeans.fit(X_transformed)
 
+            # Compute clustering performance metrics
             sse = kmeans.inertia_
             silhouette_avg = silhouette_score(X_transformed, kmeans.labels_)
             calinski_harabasz = calinski_harabasz_score(
                 dataset, kmeans.labels_)
             davies_bouldin = davies_bouldin_score(dataset, kmeans.labels_)
 
+            # Append results to the list
             tsne_results.append({
                 'params': {**tsne_param, **kmeans_param},
                 'sse': sse,
@@ -42,6 +49,8 @@ def define_best_params_tsne(dataset):
                 'calinski_harabasz_score': calinski_harabasz,
                 'davies_bouldin_score': davies_bouldin
             })
+
+    # Determine the best parameter combinations based on different metrics
     best_sse_result = min(tsne_results, key=lambda x: x['sse'])
     best_silhouette_result = max(
         tsne_results, key=lambda x: x['silhouette_score'])
@@ -50,6 +59,7 @@ def define_best_params_tsne(dataset):
     best_davies_bouldin_result = min(
         tsne_results, key=lambda x: x['davies_bouldin_score'])
 
+    # Store the best parameters and scores
     best_params = {
         "sse": best_sse_result['params'],
         "silhouette": best_silhouette_result['params'],
@@ -67,6 +77,9 @@ def define_best_params_tsne(dataset):
 
 
 def best_tsne_kmeans(best_params):
+    """
+    Function to create TSNE and KMeans instances with the best parameters.
+    """
     tsne_param_names = ['n_components', 'perplexity',
                         'early_exaggeration', 'learning_rate', 'n_iter']
     tsne_params = {name: best_params[name] for name in tsne_param_names}

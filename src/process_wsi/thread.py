@@ -2,30 +2,28 @@ import threading
 import openslide
 from utils import extrapolate_patches
 import numpy as np
-from data_prepr_aug import data_aug_impl
 
 
 def process_svs_file(svs_file, path_to_annotations, path_to_images, el_width, el_height, output_width, output_height):
+    # Retrieve the name of the current thread
     thread_name = threading.current_thread().name
-    file = open("../log/thread_" + thread_name + ".txt", "x")
-    file.write("Sono il thread" + thread_name + "\n")
-    file.write("Sto elaborando il file " +
-               svs_file[len(path_to_images):-4] + "\n")
-    file.close()
-    # Ottieni il percorso del file .xml corrispondente
+
+    # Construct the path to the annotation file corresponding to the input svs_file
     annotation = path_to_annotations + \
         svs_file[len(path_to_images):-4] + ".xml"
-    # Carica l'immagine svs
+
+    # Open the svs file using openslide
     wsi = openslide.OpenSlide(svs_file)
+
+    # Call the extrapolate_patches function to extract patches and corresponding labels from the whole slide image
     d, l = extrapolate_patches(
         wsi, annotation, el_width, el_height, output_width, output_height)
+
+    # Save the extracted patches and labels to .npy files
     np.save('../slides/' +
             svs_file[len(path_to_images):-4] + '.npy', np.array(d))
     np.save('../annotations/' +
             svs_file[len(path_to_images):-4] + '_label.npy', np.array(l))
+
+    # Return the patches and labels
     return d, l
-
-
-def data_aug_thread(image, label, shape_dataset):
-    image_train, label_train = data_aug_impl(shape_dataset, image, label)
-    return image_train, label_train

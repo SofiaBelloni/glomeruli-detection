@@ -13,10 +13,10 @@ IMAGE_SIZE = (512, 512)
 class SegNet(Model):
     def __init__(self, num_classes=NUM_CLASSES, input_shape=INPUT_SHAPE):
         super().__init__()
+        # Load the pre-trained VGG19 model as the base model for SegNet
         vgg19 = tf.keras.applications.vgg19.VGG19(
             include_top=False,   # Exclusion of the last 3 layers
             weights='imagenet',
-            # input_tensor=None,
             input_shape=input_shape,
             pooling='max',
             classes=num_classes,

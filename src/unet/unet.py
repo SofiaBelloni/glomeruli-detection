@@ -2,59 +2,106 @@ import tensorflow as tf
 
 
 def upsample(filters, size):
-  initializer = tf.random_normal_initializer(0., 0.02)
+    """
+    This function defines the upsampling block of the U-Net, consisting of a 
+    Transposed Convolution layer followed by a ReLU activation function.
 
-  result = tf.keras.Sequential()
-  result.add(
-      tf.keras.layers.Conv2DTranspose(filters, size, strides=2,
-                                      padding='same',
-                                      kernel_initializer=initializer,
-                                      use_bias=False))
-  result.add(tf.keras.layers.ReLU())
+    Parameters:
+    - filters (int): The number of filters for the transposed convolution layer.
+    - size (int): The kernel size for the transposed convolution layer.
 
-  return result
+    Returns:
+    - result (tf.keras.Sequential): The upsampling block.
+    """
+    # Initialize the weights of the layer
+    initializer = tf.random_normal_initializer(0., 0.02)
+
+    # Define the Sequential model to hold the layers
+    result = tf.keras.Sequential()
+
+    # Add a Transposed Convolution layer
+    result.add(
+        tf.keras.layers.Conv2DTranspose(filters, size, strides=2,
+                                        padding='same',
+                                        kernel_initializer=initializer,
+                                        use_bias=False))
+
+    # Add a ReLU activation function
+    result.add(tf.keras.layers.ReLU())
+
+    return result
+
 
 def Unet(output_channels=2, input_shape=[512, 512, 3]):
-  base_model = tf.keras.applications.MobileNetV2(input_shape=input_shape, include_top=False)
-  layer_names = [
-    'block_1_expand_relu',   # 256x256
-    'block_3_expand_relu',   # 128x128
-    'block_6_expand_relu',   # 64x64
-    'block_13_expand_relu',  # 32x32
-    'block_16_project',      # 16x16
-  ]
-  base_model_outputs = [base_model.get_layer(name).output for name in layer_names]
+    """
+    This function defines the U-Net model using MobileNetV2 as the encoder (downsampling stack).
 
-  # Create the feature extraction model
-  down_stack = tf.keras.Model(inputs=base_model.input, outputs=base_model_outputs)
-  down_stack.trainable = False
+    Parameters:
+    - output_channels (int): The number of output channels of the last layer.
+    - input_shape (list): The shape of the input images.
 
-  up_stack = [
-    upsample(512, 3),  # 16x16 -> 32x32
-    upsample(256, 3),  # 32x32 -> 64x64
-    upsample(128, 3),  # 64x64 -> 128x128
-    upsample(64, 3),   # 128x128 -> 256x256
-  ]
+    Returns:
+    - model (tf.keras.Model): The U-Net model.
+    """
+    # Load the pre-trained MobileNetV2 model without the top layer
+    base_model = tf.keras.applications.MobileNetV2(
+        input_shape=input_shape, include_top=False)
 
-  inputs = tf.keras.layers.Input(shape=input_shape)
+    # Select the layers that are useful for the skip connections
+    layer_names = [
+        'block_1_expand_relu',
+        'block_3_expand_relu',
+        'block_6_expand_relu',
+        'block_13_expand_relu',
+        'block_16_project',
+    ]
 
-  # Downsampling through the model
-  skips = down_stack(inputs)
-  x = skips[-1]
-  skips = reversed(skips[:-1])
+    # Get the output of the selected layers
+    base_model_outputs = [base_model.get_layer(
+        name).output for name in layer_names]
 
-  # Upsampling and establishing the skip connections
-  for up, skip in zip(up_stack, skips):
-    x = up(x)
-    concat = tf.keras.layers.Concatenate()
-    x = concat([x, skip])
+    # Define the downsampling stack using the outputs of the selected layers
+    down_stack = tf.keras.Model(
+        inputs=base_model.input, outputs=base_model_outputs)
 
-  # This is the last layer of the model
-  last = tf.keras.layers.Conv2DTranspose(
-      filters=output_channels, kernel_size=3, strides=2,
-      padding='same')  #256x256 -> 512x512
+    # Set the layers of the downsampling stack as non-trainable
+    down_stack.trainable = False
 
-  x = last(x)
-  x = tf.keras.layers.Softmax(axis=-1)(x)
+    # Define the upsampling stack
+    up_stack = [
+        upsample(512, 3),
+        upsample(256, 3),
+        upsample(128, 3),
+        upsample(64, 3),
+    ]
 
-  return tf.keras.Model(inputs=inputs, outputs=x)
+    # Define the input layer of the model
+    inputs = tf.keras.layers.Input(shape=input_shape)
+
+    # Get the skip connections for the input
+    skips = down_stack(inputs)
+
+    # Get the output of the last layer of the downsampling stack
+    x = skips[-1]
+
+    # Reverse the order of the layers in the skip connections
+    skips = reversed(skips[:-1])
+
+    # Go through the upsampling stack and concatenate with the skip connections
+    for up, skip in zip(up_stack, skips):
+        x = up(x)
+        concat = tf.keras.layers.Concatenate()
+        x = concat([x, skip])
+
+    # Define the last Transposed Convolution layer
+    last = tf.keras.layers.Conv2DTranspose(
+        filters=output_channels, kernel_size=3, strides=2, padding='same')
+
+    # Get the output of the last layer
+    x = last(x)
+
+    # Apply a Softmax activation function to the output
+    x = tf.keras.layers.Softmax(axis=-1)(x)
+
+    # Return the U-Net model
+    return tf.keras.Model(inputs=inputs, outputs=x)

@@ -6,61 +6,52 @@ from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
 
 def glomeruli_crop(glomeruli, glomeruli_labels):
-    result = []
-    original_images = []
-    original_labels = []
-    result_labels = []
+    """
+    Function to crop images containing glomeruli based on the connected components in the labels.
+    It resizes the cropped images and returns arrays of cropped images, corresponding labels, original images, and original labels.
+    """
+    result = []  # To store cropped and resized images
+    original_images = []  # To store original images
+    original_labels = []  # To store original labels
+    result_labels = []  # To store cropped and resized labels
 
+    # Iterate through all the images and corresponding labels
     for j in range(0, len(glomeruli)):
         num_labels, labels = cv2.connectedComponents(
             glomeruli_labels[j], connectivity=8)
+
+        # Iterate through all connected components (excluding the background)
         for i in range(1, num_labels):
             image = glomeruli[j]
 
-            # Find row and column indices of pixels with value 1
+            # Find the bounding box around the connected component
             yrow, xcol = np.where(labels == i)
+            yrowmin, yrowmax = np.min(yrow), np.max(yrow)
+            xcolmin, xcolmax = np.min(xcol), np.max(xcol)
 
-            # Calculate minimum and maximum row indices
-            yrowmin = np.min(yrow)
-            yrowmax = np.max(yrow)
-
-            # Calculate minimum and maximum column indices
-            xcolmin = np.min(xcol)
-            xcolmax = np.max(xcol)
-
-            # Calculate the size of the side of the square as the max between the height and the width
+            # Determine the side length of the square bounding box
             side = max(yrowmax - yrowmin + 1, xcolmax - xcolmin + 1)
+
+            # Check if the bounding box is large enough
             if (side >= 20):
-                # Adjust the bounding box to be square
+                # Adjust the bounding box to be square and within the image boundaries
                 yrowmin = max(
                     0, yrowmin - (side - (yrowmax - yrowmin + 1)) // 2)
-                yrowmax = yrowmin + side
-                if yrowmax > image.shape[0]:
-                    yrowmax = image.shape[0]
-                    yrowmin = yrowmax - side
+                yrowmax = min(image.shape[0], yrowmin + side)
                 xcolmin = max(
                     0, xcolmin - (side - (xcolmax - xcolmin + 1)) // 2)
-                xcolmax = xcolmin + side
-                if xcolmax > image.shape[1]:
-                    xcolmax = image.shape[1]
-                    xcolmin = xcolmax - side
+                xcolmax = min(image.shape[1], xcolmin + side)
 
-                # Extract the square image from the original image
+                # Extract the square cropped image and corresponding label
                 cropped_image = image[yrowmin:yrowmax, xcolmin:xcolmax]
-
-                # Calculate the proportion of glomerulus pixels in the cropped image
                 cropped_label = labels[yrowmin:yrowmax, xcolmin:xcolmax] == i
-                glomerulus_proportion = np.mean(cropped_label)
 
-                # Only keep the image if the glomerulus proportion is above the threshold
-                if glomerulus_proportion >= 0.6:
-                    # Resize image
+                # Keep the cropped image if it contains a sufficient proportion of glomeruli
+                if np.mean(cropped_label) >= 0.6:
                     resized_image = cv2.resize(
                         cropped_image, (200, 200), interpolation=cv2.INTER_AREA)
-                    cropped_label = labels[yrowmin:yrowmax, xcolmin:xcolmax]
-                    resized_label = cv2.resize(
-                        cropped_label, (200, 200), interpolation=cv2.INTER_NEAREST)
-
+                    resized_label = cv2.resize(cropped_label.astype(
+                        np.uint8), (200, 200), interpolation=cv2.INTER_NEAREST)
                     result.append(resized_image)
                     result_labels.append(resized_label)
                     original_images.append(image)
@@ -68,58 +59,80 @@ def glomeruli_crop(glomeruli, glomeruli_labels):
 
     return np.array(result), np.array(result_labels), np.array(original_images), np.array(original_labels)
 
+
 def glomeruli_crop_dark_backgroung_super_cool(glomeruli, glomeruli_labels):
-    result = []
-    result_labels = []
-    
+    """
+    Function to mask glomeruli images with their corresponding labels.
+    The function returns arrays of masked images and labels.
+    """
+    result = []  # To store masked images
+    result_labels = []  # To store labels
+
+    # Set all non-zero label values to 1
     glomeruli_labels[glomeruli_labels != 0] = 1
 
+    # Iterate through all the images and corresponding labels to apply the mask
     for i in range(0, len(glomeruli)):
-      #temp_label = np.where(glomeruli_labels[i] == i, 1, 0)
-      # Apply the mask to the image
-      result_image = cv2.merge([channel * glomeruli_labels[i] for channel in cv2.split(glomeruli[i])])
-      result.append(result_image)
-      result_labels.append(glomeruli_labels[i])
+        result_image = cv2.merge([channel * glomeruli_labels[i]
+                                 for channel in cv2.split(glomeruli[i])])
+        result.append(result_image)
+        result_labels.append(glomeruli_labels[i])
 
     return np.array(result), np.array(result_labels)
 
+
 def process_data(image):
-    return tf.cast(image, tf.float32)/255, tf.cast(image, tf.float32)/255
+    """
+    Function to normalize the pixel values of the input image.
+    Returns the normalized image.
+    """
+    return tf.cast(image, tf.float32) / 255, tf.cast(image, tf.float32) / 255
 
 
 def data_augment():
+    """
+    Function to define a sequence of augmentation techniques to be applied to the images.
+    Returns the augmentation sequence.
+    """
     return iaa.Sequential([
-        iaa.Dropout((0, 0.05)),  # Remove random pixel
-        iaa.Affine(rotate=(-30, 30)),  # Rotate between -30 and 30 degreed
-        iaa.Fliplr(0.5),  # Flip with 0.5 probability
-        iaa.Crop(percent=(0, 0.2), keep_size=True),  # Random crop
-        # Add -50 to 50 to the brightness-related channels of each image
-        iaa.WithBrightnessChannels(iaa.Add((-50, 50))),
-        # Change images to grayscale and overlay them with the original image by varying strengths, effectively removing 0 to 50% of the color
+        iaa.Dropout((0, 0.05)),  # Randomly remove pixels
+        iaa.Affine(rotate=(-30, 30)),  # Rotate image within a range
+        iaa.Fliplr(0.5),  # Horizontal flip with 50% probability
+        # Random crop while keeping the original size
+        iaa.Crop(percent=(0, 0.2), keep_size=True),
+        iaa.WithBrightnessChannels(iaa.Add((-50, 50))),  # Adjust brightness
+        # Convert to grayscale with varying strength
         iaa.Grayscale(alpha=(0.0, 0.5)),
-        # Add random value to each pixel
+        # Adjust gamma contrast
         iaa.GammaContrast((0.5, 2.0), per_channel=True),
-        # Local distortions of images by moving points around
-        iaa.PiecewiseAffine(scale=(0.01, 0.1)),
+        iaa.PiecewiseAffine(scale=(0.01, 0.1)),  # Apply local distortions
     ], random_order=True)
 
 
 def data_aug_impl_no_label(image_train, n=1):
+    """
+    Function to augment a given dataset of images without labels.
+    The augmented images are appended to the original dataset.
+    Returns the augmented dataset.
+    """
     da = data_augment()
-    image_train_copy = image_train.copy()
     for i in range(n):
-        augmented_images = da(
-            images=image_train_copy)
+        augmented_images = da(images=image_train.copy())
         image_train = np.append(image_train, augmented_images, axis=0)
     return image_train
 
+
 def data_aug_impl(shape_dataset, image_train, label_train):
+    """
+    Function to augment a given dataset of images with their corresponding labels.
+    The augmented images and labels are appended to the original datasets.
+    Returns the augmented datasets of images and labels.
+    """
     da = data_augment()
     segmented_label_train = [SegmentationMapsOnImage(
         label, shape=shape_dataset) for label in label_train]
-    image_train_copy = image_train.copy()
     augmented_images, augmented_labels = da(
-        images=image_train_copy, segmentation_maps=segmented_label_train)
+        images=image_train.copy(), segmentation_maps=segmented_label_train)
     image_train = np.append(image_train, augmented_images, axis=0)
     label_train = np.append(label_train, np.array(
         [label.get_arr() for label in augmented_labels]), axis=0)
