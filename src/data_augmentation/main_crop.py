@@ -72,36 +72,12 @@ def glomeruli_crop(glomeruli, glomeruli_labels):
 
     return np.array(result), np.array(result_labels), np.array(original_images), np.array(original_labels)
 
-def glomeruli_crop_dark_backgroung_super_cool(glomeruli, glomeruli_labels):
-    result = []
-    result_labels = []
-
-    glomeruli_labels[glomeruli_labels != 0] = 1
-
-    for i in range(0, len(glomeruli)):
-        # temp_label = np.where(glomeruli_labels[i] == i, 1, 0)
-        # Apply the mask to the image
-        result_image = cv2.merge([channel * glomeruli_labels[i]
-                                 for channel in cv2.split(glomeruli[i])])
-        result.append(result_image)
-        result_labels.append(glomeruli_labels[i])
-
-    return np.array(result), np.array(result_labels)
-
 ds = np.load(dataset_path)
 lb = np.load(label_path)
 
-#ds = (ds * 255).astype(np.uint8)
-#lb = np.argmax(np.eye(lb.shape[-1])[np.argmax(lb, axis=-1)], axis=-1).astype(np.uint8)
 
 print(f"Dataset shape {ds.shape} \nLabels shape {lb.shape}")
 
 ds_c, lb_c, _, _ = glomeruli_crop(ds, lb)
 print(f"Dataset shape cropped {ds_c.shape} \nLabels shape cropped {lb_c.shape}")
-
-#ds_d, lb_d = glomeruli_crop_dark_backgroung_super_cool(ds_c, lb_c)
-#print(f"Dataset shape cropped dark {ds_d.shape} \nLabels shape cropped dark {lb_d.shape}")
-
-#np.save(path_to_save_dataset, ds_c)
-#np.save(path_to_save_label, lb_c)
 

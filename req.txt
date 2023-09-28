@@ -1,7 +1,0 @@
-numpy
-matplotlib
-openslide-python
-opencv-python
-tensorflow
-imgaug
-scikit-learn
