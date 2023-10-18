@@ -1,6 +1,6 @@
 # GLOMERULI DETECTION​
 
-**MACHINE LEARNING IN APPLICATION EXAM**
+**MACHINE LEARNING IN APPLICATION**
 
 *06th October 2023*
 
@@ -16,3 +16,8 @@ WSIs belonging to human kidney sections. The best approach of semantic segmentat
 better results than U-Net. Regarding clustering, K-means did not provide a comfortable classification, probably due to the complex
 nature of our initial images. Therefore, in presence of labels, it might be better to approach this problem with a supervised
 technique rather than an unsupervised method.
+
+The digital tissue images used in this study are WSIs (Whole Slide Images) of renal biopsies. The dataset is composed
+of 9 different WSIs of human kidney tissue provided with annotations which show glomeruli.
+
+**Check *Report.pdf* for the full analysis.**
